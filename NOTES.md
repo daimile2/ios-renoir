@@ -1,3 +1,18 @@
+# Renoir hardware panic — 2026-10-20
+
+- User photo IMG_2707.jpeg (private, ignored) confirms 0082 reached XNU/GIC
+  virtual timer INTID 27, then panicked before PID 1.
+- Exact panic PC 0xfffffe0007491348, instruction d51be228. Disassembly of
+  the shipped kernel identifies msr CNTP_CTL_EL0,x8 in fiq_context_init.
+  Firmware rejects this physical timer register access; CNTV write preceding
+  it completed. Legacy interrupt-controller/debug lookup warnings precede
+  successful custom GIC initialization and are not this panic's cause.
+- 0083 guards the precautionary CNTP mask write on SWEET, preserving virtual
+  timer enable. All 83 patches apply without skips; machine_routines.c locally cross-compiled
+  to an object with LLVM 18 and CI headers. CI and hardware test remain.
+- handshake structure not initialized is emitted after the original panic.
+  Do not interpret it as the primary failure.
+
 # Renoir active handoff — 2026-10-20
 
 ## Latest — renoir CI and high-memory QEMU passed
