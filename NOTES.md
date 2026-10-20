@@ -1,3 +1,33 @@
+# Renoir input phase — 0084 KEYS PATCH, NOT YET HARDWARE TESTED
+
+- GUI baseline stays on renoir/bringup (0841e84), identity-v3 image retained.
+  Current source branch renoir/input. Phone STILL RUNNING GUI v3.
+- User finer report: LOCKSCREEN, red font, upward swipe no response, wrong
+  clock, no button response; charging indication visible. Touch/keys still
+  disabled in v3. Red appearance needs a photo, no diagnosis asserted.
+- Battery is NOT hardware verified: sweetbattery=0 publishes static 100%,
+  4200mV, external=true, charging=false; user informed icon is placeholder.
+  Base IOPlatformExpert::getGMTTimeOfDay returns0; no RTC implementation.
+- Pinned official Xiaomi platform refs downloaded under
+  ../toolchain/renoir-linux-reference/platform/provenance.json:
+  qpnp-power-on.c confirms Gen3 HLOS subtype0x09, power bit7/resin bit6;
+  pinctrl-spmi-gpio confirms one-based GPIO cells. Live DT PON base0x1300
+  SID0; PM8350 SID1 GPIO6 => base0x8800+5*0x100=0x8d00. Original Android
+  dmesg confirms SPMI v5 0x50020000, same controller MMIO apertures.
+- 0084 retargets existing observer-only key reads: PON RT0x1310 PPID0x013,
+  GPIO RT0x8d10 PPID0x18d. Checks HLOS subtype0x09 before power/down;
+  retains enabled-input/subtype checks for GPIO6. NO PMIC writes or resets.
+  Default sweetkeys=0, UFS init now calls this opt-in path; next kernel test
+  must explicitly sweetkeys=1. SPI touch and USB probes remain disabled.
+- Fresh strict patch check: all84 apply without skips. Local LLVM18 object
+  compiles of keys+ufs: 0/2 failures, artifacts ../artifacts/renoir-objects-0084.
+  CI/full link and QEMU then hardware still required. Do not claim buttons
+  working until actual physical press/release logs and UI behavior verified.
+- Source staging note: upstream source buildtree UFS was still original81;
+  replaced that local compile source with canonical82+0084 version. keys
+  old text retrieved from actual0082 buildtree tar for exact diff. Patch
+  is checked from clean original base, so no staging drift enters repo.
+
 # MILESTONE — REAL iOS GUI ON RENOIR VERIFIED (2026-10-21)
 
 - User selected option 2 for identity-v3: LOCKSCREEN/HOME SCREEN DISPLAYED.
