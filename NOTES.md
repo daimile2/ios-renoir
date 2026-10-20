@@ -1,3 +1,21 @@
+# Renoir latest — 0083 temporarily booted, awaiting screen evidence
+
+- CI 39444717848 SUCCESS, kernel source 200bb5f89b983d159a75807a4ab4601d7bfff86e.
+  Kernel SHA256 6b85628bf834510f916c4952382bdd2c95fa6fecd9f06565d6f43a0ba4d3d804.
+  CI log confirms 0083 applied; downloaded SHA256SUMS passes. Disassembly
+  verifies fiq_context_init enables CNTV and returns without accessing CNTP.
+- Formal 0083 QEMU with --trap-physical-timer PASSED: md0, test PID 1,
+  five heartbeats, no EL2 trap/panic and zero unknown glyphs. Evidence
+  ../artifacts/xnu-renoir-0083/qemu/milestone.json and fb.txt.
+- Phone image full shim boot v2 unpacked and payload/stock DTB compared.
+  SHA256 877237efcbe6fc4f5ae9baa53702043910518bad151f0085dffc91522c1cad28.
+  ../artifacts/xnu-renoir-0083/phone-mockfs-v1/manifest.json records inputs.
+- User manually entered FASTBOOT; temporary boot succeeded Sending/Booting
+  OKAY, log ../logs/fastboot-xnu-0083-v1.log. Await actual phone observation.
+  Do not claim phone PID 1 based on QEMU. Test uses RAM md0; no flash.
+- All earlier userland/root-image and destructive-data prerequisites remain
+  pending. Bare-metal XNU has no adb; next test needs manual FASTBOOT again.
+
 # Renoir hardware panic — 2026-10-20
 
 - User photo IMG_2707.jpeg (private, ignored) confirms 0082 reached XNU/GIC
@@ -17,6 +35,11 @@
   undefined instruction. Old 0082 reproduces a trap at EXACT hardware PC
   0xfffffe0007491348, ESR_EL2 0x6232f904; result status el2_trap, exit 2.
   Evidence ../artifacts/xnu-renoir-0082/qemu-timer-restricted.
+- Causal test (QEMU ONLY): changed just d51be228 to NOP in a private copy
+  of old payload; same EL2-restricted environment reaches md0, PID 1 and
+  five heartbeats without EL2 trap. Full circular framebuffer text, not tail,
+  is required to assess boot. Evidence ../artifacts/timer-causality-qemu-only.
+  Never use this synthetic payload as the phone release image.
 - handshake structure not initialized is emitted after the original panic.
   Do not interpret it as the primary failure.
 
