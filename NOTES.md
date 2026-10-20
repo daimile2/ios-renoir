@@ -1,3 +1,14 @@
+# Renoir keys milestone — physical buttons VERIFIED, sluggish GUI
+
+- User confirms power, volume up and volume down all effective on 0084.
+  Feedback is very slow; no latency measurement or captured key timing yet.
+- Current phone still running keys-v1; preserve it for observations.
+- No GPU acceleration, cpus=1, CPU framebuffer copy configured30Hz.
+  These are performance constraints, not proof of a single root cause.
+  Driver nominal poll20ms; read timeout1ms each, actual delays not measured.
+- Preparing same-kernel/ADT 10Hz copy-only comparison, no root flash,
+  no SMP change. Lower copy rate may free CPU but needs phone comparison.
+
 # Renoir input phase — 0084 KEYS TEST BOOT (2026-10-21)
 
 - GUI baseline stays on renoir/bringup (0841e84), identity-v3 image retained.
