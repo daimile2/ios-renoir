@@ -51,6 +51,55 @@ below belong to the upstream author and are not facts about this phone.
   approval as required by AGENTS.md. Partition backups do not include personal
   data, super or a complete stock firmware package. Never use SWEET recovery.
 
+## Update — 2026-10-20, baseline CI and userland preparation
+
+- GitHub authentication now works as daimile2. Fork created:
+  https://github.com/daimile2/ios-renoir (origin uses SSH; upstream retained).
+- Fork workflows initially returned 404 / workflow list empty despite Actions
+  being enabled. A comment-only main commit registered the workflow, then
+  workflow_dispatch succeeded. Main baseline commit 6e1927ca171b075800aa6fb03aa0f4aa4ee74424;
+  original 81 patches unchanged. User baseline CI 39431933008 currently live:
+  https://github.com/daimile2/ios-renoir/actions/runs/39431933008
+- Renoir commit rebased to 80d2351 on the fork main. No source changes lost.
+- Downloaded the upstream 0081 kernel and buildtree from successful run
+  39158169212 (commit fdad0de8dc0e75c5ea84762adc03f7232dc91f19). Kernel
+  SHA256SUMS passed. Artifacts in ../artifacts/xnu-baseline-upstream.
+- BASELINE QEMU PASSED: rd=md0 with locally assembled test init, CPU=1;
+  /sbin/launchd loaded, test init reports PID 1, five heartbeat lines visible,
+  no panic in the decoded snapshot. Evidence qemu/fb.txt + milestone.json.
+  This is upstream 0081, NOT proof of renoir XNU hardware boot.
+- Added project-local LLVM 18 tools from Ubuntu packages, package SHA256
+  verified against apt metadata. Sparse tools work (8MiB raw/sparse/raw
+  roundtrip SHA256 exact match). No root installation performed.
+- xnu-cc.py fixes: compiler from PATH or XNU_CC_CLANG, fork runner path
+  detection, no HFS/libpthread-specific compatibility flags borrowed into
+  unrelated drivers, fail on an unmatched requested filter. After fixes,
+  all four 0082-modified files compile to arm64 Mach-O objects locally
+  with LLVM 18 (artifacts/renoir-objects; log renoir-local-compile.log).
+  Typed allocator builtins are stubbed by the helper; full CI still required.
+- Downloaded OS, SystemOS, AppOS and DeviceTree straight from Apple CDN.
+  ZIP CRC + D22AP BuildManifest SHA384 all match; version 16.7.16/20H392.
+  ../downloads/ios-20H392/verified-components.json contains exact hashes.
+- Built local LZFSE/apfs-fuse under ../toolchain. Decoded real D22AP ADT:
+  186084 bytes parsed fully; /product has 68 raw properties. ADT generators
+  now include actual non-placeholder /product attributes, no missing warning.
+- Read-only OS/SystemOS APFS mounts confirmed SystemVersion 16.7.16/20H392,
+  launchd, SpringBoard and dyld shared cache exist. Mounts currently under
+  ../artifacts/mount-os and mount-systemos; unmount with fusermount3 -u.
+- Root build wrapper prepared at ../tools/build-ios-root.sh; --check passed
+  all hashes and prerequisites. Root/loop mount access is needed; user has
+  been asked to run sudo bash tools/build-ios-root.sh. It NEVER flashes.
+  Do not run a second builder while one is active. No image created yet.
+- More real hardware facts: CPU0..3 A55 (0xd05), CPU4..7 A78 (0xd41), so 4+4.
+  fts_driver_info: chip 0x5652, SPI mode 0 max_freq 12MHz (DTB says 6MHz).
+  Official Xiaomi branch star-r-oss commit a9244def8a5178edee9ed4a30d60034de8286cbb
+  has matching FT3658U mapping in focaltech_spi. Reference source files
+  fetched to ../toolchain/renoir-linux-reference and Git blob hashes verified.
+- Next: finish own baseline CI; push/dispatch renoir/bringup CI, then QEMU
+  (renoir ADT and --fb-base 0xe1000000) before temporary phone boot. No XNU
+  phone boot or userdata write has occurred. Destructive gate still pending.
+
+
 ---
 
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes

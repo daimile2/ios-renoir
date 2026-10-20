@@ -17,18 +17,19 @@ Env: XNU_CC_EXTRA   extra flags (e.g. "-DKPERF -DKPC" for config changes)
      XNU_CC_OBJDIR  emit real objects there instead of a syntax-only check
                     (then: llvm-nm for undefined symbols = link errors)
 """
-import concurrent.futures as cf, os, re, shlex, subprocess, sys
+import concurrent.futures as cf, os, re, shlex, shutil, subprocess, sys
 from collections import Counter
 
-CI_DXB = '/Users/runner/work/ios-sweet/ios-sweet/dxb'
+CI_DXB = os.environ.get('XNU_CC_CI_DXB', '/Users/runner/work/ios-sweet/ios-sweet/dxb')
 CI_SDK_PLATFORM = re.compile(r'/Applications/Xcode[^ ]*?\.sdk/+System/Library/Frameworks/Kernel\.framework/Versions/A/PrivateHeaders/platform')
-CLANG = os.path.expanduser('~/swift/usr/bin/clang')
+CLANG = os.environ.get('XNU_CC_CLANG') or shutil.which('clang') or 'clang'
 DROP = {'-c', '-g', '-MD', '-MMD'}
 DROP_WITH_ARG = {'-MF', '-MT', '-o', '-arch'}
 COMPONENTS = ('osfmk', 'bsd', 'iokit', 'libkern', 'pexpert', 'security', 'san', 'libsa')
 
 
 def commands(log):
+    global CI_DXB
     seen = {}
     for line in open(log, errors='replace'):
         if '/clang' not in line or ' -c ' not in line:
@@ -41,6 +42,13 @@ def commands(log):
             args = shlex.split(m.group(3), posix=True)
         except ValueError:	# shell fragments with unbalanced quotes: not a plain compile
             continue
+        # Fork runner paths contain the fork's name, not ios-sweet. Infer
+        # the actual build root before matching or rewriting source paths.
+        if not seen and 'XNU_CC_CI_DXB' not in os.environ:
+            roots = [re.match(r'(.*/dxb)/xnu/', arg) for arg in args]
+            root = next((match.group(1) for match in roots if match), None)
+            if root:
+                CI_DXB = root
         srcs = [a for a in args if re.search(r'\.(c|cpp|s|S)$', a) and a.startswith(CI_DXB)]
         if len(srcs) == 1 and '/xnu/' in srcs[0]:
             seen[srcs[0]] = ('clang++' if m.group(2) else 'clang', args)
@@ -72,9 +80,20 @@ def template_for(src, cmds):
     """Borrow flags from a recovered command of the same component + language."""
     comp = next((c for c in COMPONENTS if f'/{c}/' in src), None)
     lang = os.path.splitext(src)[1]
+    candidates = []
     for other, (kind, args) in cmds.items():
         if os.path.splitext(other)[1] == lang and f'/xnu/{comp}/' in other:
-            return kind, [src if a == other else a for a in args]
+            # Staged HFS/libpthread providers use forced compatibility
+            # headers. Those flags can redefine lock declarations and must
+            # not leak into an unrelated driver whose log line was lost.
+            if any(f'/{provider}/' in other and f'/{provider}/' not in src
+                   for provider in ('sweet_hfs', 'sweet_libpthread', 'sweet_bearssl')):
+                continue
+            proximity = len(os.path.commonpath([os.path.dirname(src), os.path.dirname(other)]))
+            candidates.append((proximity, kind, args, other))
+    if candidates:
+        _, kind, args, other = max(candidates, key=lambda item: item[0])
+        return kind, [src if a == other else a for a in args]
     return None
 
 
@@ -144,6 +163,10 @@ def main():
     print(f'{synth} commands synthesized from Makefile source lists', file=sys.stderr)
     if filters:
         cmds = {k: v for k, v in cmds.items() if any(f in k for f in filters)}
+        unmatched = [f for f in filters if not any(f in source for source in cmds)]
+        if unmatched:
+            print(f'no compile command for requested filters: {unmatched}', file=sys.stderr)
+            return 1
     if not cmds:
         print('no compile commands matched', file=sys.stderr)
         return 1
