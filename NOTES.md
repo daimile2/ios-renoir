@@ -10,6 +10,13 @@
 - 0083 guards the precautionary CNTP mask write on SWEET, preserving virtual
   timer enable. All 83 patches apply without skips; machine_routines.c locally cross-compiled
   to an object with LLVM 18 and CI headers. CI and hardware test remain.
+- 0083 committed as 200bb5f; full CI 39444717848 is in progress:
+  https://github.com/daimile2/ios-renoir/actions/runs/39444717848
+- Added optional QEMU --trap-physical-timer EL2 bootstrap. It restricts CNTP
+  access and records ESR/ELR/FAR/SPSR rather than injecting the phone's EL1
+  undefined instruction. Old 0082 reproduces a trap at EXACT hardware PC
+  0xfffffe0007491348, ESR_EL2 0x6232f904; result status el2_trap, exit 2.
+  Evidence ../artifacts/xnu-renoir-0082/qemu-timer-restricted.
 - handshake structure not initialized is emitted after the original panic.
   Do not interpret it as the primary failure.
 

@@ -29,6 +29,69 @@ STUB_PA = 0x40200000	# above the dtb QEMU places at RAM base
 BOOT_LINE_LENGTH = 608
 
 
+def restricted_timer_stub(ba_pa, entry_pa, out):
+    """Enter EL1 from EL2 with CNTP accesses trapped; preserve virtual timer.
+
+    This models the phone's denied CNTP access, not its exact exception
+    injection mechanism. An EL2 exception is recorded for regression checks.
+    """
+    source = f"""
+.text
+.global _start
+_start:
+    mov x1, #0x80000000
+    msr hcr_el2, x1
+    mov x1, #1
+    msr cnthctl_el2, x1
+    msr cntvoff_el2, xzr
+    msr cptr_el2, xzr
+    msr mdcr_el2, xzr
+    mrs x1, icc_sre_el2
+    orr x1, x1, #1
+    orr x1, x1, #8
+    msr icc_sre_el2, x1
+    isb
+    adr x1, vectors
+    msr vbar_el2, x1
+    ldr x0, boot_args
+    ldr x1, entry
+    msr elr_el2, x1
+    mov x1, #0x3c5
+    msr spsr_el2, x1
+    eret
+.balign 8
+boot_args: .quad {ba_pa}
+entry: .quad {entry_pa}
+.balign 2048
+vectors:
+.rept 16
+    b trap
+    .balign 128
+.endr
+trap:
+    ldr x0, report_addr
+    mov x1, #0x544d
+    str x1, [x0]
+    mrs x1, esr_el2
+    str x1, [x0, #8]
+    mrs x1, elr_el2
+    str x1, [x0, #16]
+    mrs x1, far_el2
+    str x1, [x0, #24]
+    mrs x1, spsr_el2
+    str x1, [x0, #32]
+1:  wfe
+    b 1b
+.balign 8
+report_addr: .quad {STUB_PA + 0x2000}
+"""
+    asm, obj, binary = [os.path.join(out, 'el2-stub.' + ext) for ext in ('S', 'o', 'bin')]
+    open(asm, 'w').write(source)
+    subprocess.run(['aarch64-linux-gnu-as', '-march=armv8-a', asm, '-o', obj], check=True)
+    subprocess.run(['aarch64-linux-gnu-objcopy', '-O', 'binary', obj, binary], check=True)
+    return open(binary, 'rb').read()
+
+
 def check_qemu_dependency(cpu='cortex-a76'):
     """Verify qemu-system-aarch64 binary and CPU model support."""
     qemu_bin = shutil.which('qemu-system-aarch64')
@@ -227,6 +290,8 @@ def main():
     ap.add_argument('--cpu', default='cortex-a76', help='QEMU CPU model (default: cortex-a76)')
     ap.add_argument('--fb-base', type=lambda value: int(value, 0), default=FB_BASE,
                     help='framebuffer PA matching the kernel (renoir: 0xe1000000)')
+    ap.add_argument('--trap-physical-timer', action='store_true',
+                    help='run through EL2 and report trapped CNTP accesses (requires GNU AArch64 binutils)')
     ap.add_argument('--kernel', help='matching unstripped kernel, for exact framebuffer text decoding (uses llvm-nm)')
     ap.add_argument('--fail-on-panic', action='store_true', help='exit 2 for a visible panic, 3 for incomplete/blank decoding; requires --kernel')
     ap.add_argument('--live-serial', action='store_true', help='stream serial console output to stdout in real time')
@@ -268,7 +333,8 @@ def main():
 
     phys_base, img, ba_pa, entry_pa = build_image(payload)
     open(f'{out}/ram.bin', 'wb').write(img)
-    open(f'{out}/stub.bin', 'wb').write(stub(ba_pa, entry_pa))
+    open(f'{out}/stub.bin', 'wb').write(
+        restricted_timer_stub(ba_pa, entry_pa, out) if a.trap_physical_timer else stub(ba_pa, entry_pa))
     print(f'phys_base={phys_base:#x} boot_args={ba_pa:#x} entry={entry_pa:#x}', file=sys.stderr)
 
     mon = f'{out}/mon.sock'
@@ -277,7 +343,8 @@ def main():
     # virt RAM starts at 0x40000000: cover the payload's RAM (mkadt.py --highmem needs 8G).
     mem_size = struct.unpack_from('<Q', payload, 0x40)[0]
     ram_gib = max(4, -(-(phys_base + mem_size - 0x40000000) // (1 << 30)))
-    cmd = ['qemu-system-aarch64', '-M', 'virt,gic-version=3', '-cpu', a.cpu, '-smp', '1', '-m', f'{ram_gib}G',
+    machine = 'virt,gic-version=3' + (',virtualization=on' if a.trap_physical_timer else '')
+    cmd = ['qemu-system-aarch64', '-M', machine, '-cpu', a.cpu, '-smp', '1', '-m', f'{ram_gib}G',
            '-nographic', '-serial', f'file:{out}/serial.txt', '-qmp', f'unix:{mon},server,nowait',
            '-d', 'int,guest_errors,unimp', '-D', f'{out}/qemu.log', '-no-reboot',
            '-device', f'loader,file={out}/ram.bin,addr={phys_base:#x},force-raw=on',
@@ -310,6 +377,13 @@ def main():
         if p.poll() is None:
             _, regs, *extra = qmp(mon, 'stop', 'info registers', *a.hmp, pmemsave=(FB_BASE, FB_STRIDE * FB_H, f'{out}/fb.raw'))
             open(f'{out}/regs.txt', 'w').write(regs + ''.join(f'\n(qemu) {c}\n{r}' for c, r in zip(a.hmp, extra)))
+            timer_trap = None
+            if a.trap_physical_timer:
+                report = f'{out}/el2-report.bin'
+                qmp(mon, pmemsave=(STUB_PA + 0x2000, 40, report))
+                magic, esr, elr, far, spsr = struct.unpack('<5Q', open(report, 'rb').read())
+                if magic == 0x544d:
+                    timer_trap = dict(esr=hex(esr), elr=hex(elr), far=hex(far), spsr=hex(spsr))
             p.kill()
             p.wait()
             raw = open(f'{out}/fb.raw', 'rb').read()
@@ -319,6 +393,8 @@ def main():
                 screen, unknown = decode_screen(raw, font)
                 open(f'{out}/fb.txt', 'w').write(screen)
                 result = screen_result(screen, unknown)
+            if timer_trap is not None:
+                result.update(status='el2_trap', el2_exception=timer_trap)
             os.unlink(f'{out}/fb.raw')
         else:
             print(f'qemu exited early: {p.returncode}', file=sys.stderr)
@@ -326,7 +402,7 @@ def main():
         open(f'{out}/result.json', 'w').write(json.dumps(result, indent=2) + '\n')
         print(json.dumps(result), file=sys.stderr)
         print(f'{out}/fb.png  {out}/regs.txt  {out}/qemu.log', file=sys.stderr)
-        if a.fail_on_panic and result['status'] == 'panic':
+        if a.fail_on_panic and result['status'] in ('panic', 'el2_trap'):
             return 2
         if a.fail_on_panic and result['status'] in ('incomplete_decode', 'blank_screen'):
             return 3
