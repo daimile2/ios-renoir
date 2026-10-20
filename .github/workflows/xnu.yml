@@ -1,3 +1,4 @@
+# Register the fork workflow; the upstream device patch series is unchanged.
 name: xnu
 
 on:
