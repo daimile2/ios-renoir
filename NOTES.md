@@ -1,3 +1,23 @@
+# MILESTONE — REAL iOS GUI ON RENOIR VERIFIED (2026-10-21)
+
+- User selected option 2 for identity-v3: LOCKSCREEN/HOME SCREEN DISPLAYED.
+  This is real iOS userland on the UFS HFS+ root, not mockfs test init.
+  Await finer choice (lockscreen without touch / home without touch / touch).
+- v2 had lsd blocked inside MG UniqueDeviceID and GUI waiting LS database.
+  v3 adds chosen MAC identity inputs; user GUI success verifies this changed
+  boot crosses the previous logo wait. No root reflash or kernel rebuild.
+- WORKING BASELINE: ../artifacts/xnu-renoir-0083/phone-ios-identity-v3/
+  shim-boot.img + manifest.json + milestone.json. Generator commit25f05d7,
+  kernel CI39444717848 (0083). Keep this image as fallback. Phone is
+  CURRENTLY RUNNING iOS GUI — DO NOT REBOOT before user observation.
+- Touch/keys probes remain disabled from SWEET bring-up isolation. Next
+  work is renoir FT3658U GENI-SPI touch and PM8350 PON mapping, not using
+  original SWEET I2C/PM6150 drivers. Device facts, live DT and official
+  Xiaomi SPI reference already local; actual touch driver not implemented.
+- Recovery/partition backups intact. userdata replaced by iOS; boot_a hash
+  unchanged (SukiSU, user says retaining it optional). EDL not tested and
+  explicitly accepted by user before userdata flash. Do not flash boot.
+
 # Renoir current — IDENTITY v3 TEMPORARY BOOT RUNNING
 
 - diag-v2 remained logo. User FASTBOOT, temporary TWRP, log pulled:
