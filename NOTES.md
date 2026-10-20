@@ -1,3 +1,21 @@
+# Renoir latest — XNU UFS READ-ONLY DISCOVERY VERIFIED
+
+- User selected option 1 (userdata ... read-only / BSD root ufsroot0),
+  then reported unable to mount root. This confirms XNU UFS discovery,
+  NOT successful HFS+ mount: Android userdata has not been replaced.
+  Exact mount error was not transcribed; do not invent an errno.
+- Evidence ../artifacts/xnu-renoir-0083/phone-ufs-readonly-v1/milestone.json.
+  Same formal 0083 kernel as real PID 1 milestone; no partition flashing.
+- Next required input: user must execute sudo bash tools/build-ios-root.sh
+  from project folder. sudo -n true still reports password required;
+  agent cannot perform local loop mounts. Host free 47GiB, script requires
+  24GiB; verified Apple components and all build tools already local.
+- Ask user to run the prepared script, never request their password.
+  Need completed local root image validation before proposing flashing.
+- Personal-data disposition still unanswered. Confirm each destructive
+  step per AGENTS.md, with exact image/partition reviewed first.
+- User prefers numbered response choices.
+
 # Renoir hardware milestone — TEST PID 1 VERIFIED
 
 - User explicitly confirmed "出现 PID 1 / still alive" after temporary
