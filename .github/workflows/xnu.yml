@@ -47,6 +47,21 @@ jobs:
           git init -q dxb
           git -C dxb fetch -q --depth 1 "$DXB_REPO" "$DXB_SHA"
           git -C dxb checkout -q FETCH_HEAD
+          # A missing device patch must fail the build, rather than produce
+          # an apparently successful kernel with part of the port omitted.
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('dxb/build.sh')
+          source = path.read_text()
+          old = '                warning "Skipping patch ${PATCH} (already upstream, previously applied, or malformed): ${APPLY_CHECK}"'
+          new = '''                if [[ "$(basename "$PATCH")" =~ ^[0-9]{4}- ]]; then
+                              error "Required device patch failed: ${PATCH}: ${APPLY_CHECK}"
+                              exit 1
+                          fi
+          ''' + old
+          assert source.count(old) == 1, 'Pinned build script patch loop changed'
+          path.write_text(source.replace(old, new))
+          PY
           # 12.5-14.3 use the top-level patches dir; ours go next to blacktop's
           cp xnu/patches/*.patch xnu/patches/*.sh dxb/patches/
           # libfirehose_kernel is built arm64e-only; the SWEET kernel is plain arm64

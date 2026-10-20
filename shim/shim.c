@@ -372,6 +372,19 @@ static uint32_t to_us(uint64_t ticks)
 
 void shim_main(uint64_t dtb)
 {
+#if defined(RENOIR_DISPLAY_ONLY)
+	/* First renoir probe: no UFS, PSCI or unverified reset MMIO. */
+	stage = "renoir display";
+	con_clear(RED);
+	con_str("SHIM", "renoir display probe v1");
+	con_hex("FB", FB_PHYS);
+	con_hex("DTB", dtb);
+	con_hex("CNTFRQ", rsr("cntfrq_el0"));
+	con_hex("MMFR0", rsr("id_aa64mmfr0_el1"));
+	con_str("STATUS", "display only; hold Power to restart");
+	for (;;)
+		__asm__ volatile("wfe");
+#endif
 	struct mmu_info mi;
 
 	/* An xnu payload in the ramdisk means: boot it (MMU stays off). */

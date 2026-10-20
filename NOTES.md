@@ -1,3 +1,58 @@
+# Renoir active handoff — 2026-10-20
+
+This checkout is now the renoir port. All older SWEET device observations
+below belong to the upstream author and are not facts about this phone.
+
+- Workspace: parent directory ios-renoir. No flashing has been performed.
+- Upstream baseline: 11da58bd050672960c0a83b5bef2176047eea479 (81 patches).
+- Branch: renoir/bringup. GitHub fork/CI not created: gh is not authenticated.
+- Real phone: renoir / M2101K9C, su uid=0, slot _a. Android lock properties are
+  spoofed by Play Integrity Fix (user confirmed); cmdline is orange.
+- Backups: ../backup/partitions, 17 calibration/boot partitions, total
+  832045056 bytes. Device hash, exact length and local SHA256SUMS all passed.
+  boot_a is the current rooted boot image, not claimed to be factory stock.
+- Live FDT + dts: ../dtb/renoir-live.*; hardware facts: ../renoir移植事实表.md.
+- M1 VERIFIED: temporary fastboot boot returned Sending/Booting OKAY and user
+  confirmed red background with text. Image ../artifacts/shim-v1/shim-boot.img,
+  SHA256 aed82f65fcce2809d62ec028333166eb2d97c7aa0d7eb7b461c06bbbd560d924.
+  Display-only image: no loader, UFS, PSCI tests or reset MMIO executed.
+  QEMU executed the same shim Image and framebuffer stores were verified;
+  ../artifacts/qemu-shim-v1/fb.png and result.json. This is NOT an XNU test.
+- Rebuild display: bash ../tools/build-display.sh. For an XNU image set
+  SHIM_MODE=full and DTB_PATH to extracted vendor_boot DTB; do NOT boot an
+  arbitrary upstream sweet payload on this phone.
+- boot and vendor_boot use header v3. DTB extracted from vendor_boot_a; shim
+  v2 wraps the stock DTB collection. Exact embedded DTB verified with cmp.
+- Important deltas: FB 0xe1000000 (32MiB block base 0xe0000000, offset 16MiB),
+  virtual timer INTID 27 (not 19), physical timer 30, SPI touch is FocalTech
+  0x5652 at 0x988000 (NOT GT9897T). GIC and UFS bases match sweet.
+- 0082 corrects early framebuffer mappings/alias, disables unported input/USB
+  probes and defaults the persistent userdata log to off. Original 81 patches
+  kept intact. mkadt-renoir.py generates phone/QEMU variants; phone RAM
+  0x200000000+0x80000000 is a candidate based on FDT+iomem, XPU not verified.
+- qemu-sweet.py now accepts --fb-base 0xe1000000 for the renoir kernel;
+  baseline SWEET keeps its old default. All scripts pass repository validation.
+- The original 81 patches applied without skips to xnu-8796.141.3 (local source
+  in ../toolchain/xnu-baseline); 0082 applied too. Reproduce fresh patch check:
+  python3 ../tools/check-patch-series.py. This checks patch application only,
+  not compilation; only two externally patched HFS files staged locally.
+- CI now fails on a numbered device patch failure instead of silently skipping.
+  Workflow YAML, embedded Python and resulting shell syntax checked locally.
+- NO XNU kernel compiled/downloaded yet. NO XNU QEMU boot or phone boot yet.
+  NO Apple userland obtained. No /product node yet; d22ap.adt is missing.
+  No root image, no recovery/EDL validation; userdata stays Android.
+- Next: user completes gh auth login --git-protocol ssh (already requested),
+  create their fork; run unmodified upstream baseline CI first; obtain kernel,
+  buildtree and logs; run baseline QEMU. Then commit/push renoir changes and
+  build 0082; QEMU with matching ADT/--fb-base; phone cpus=1, ufsrw=0 rootrw=0
+  sweetlog=0 sweetusb=0 sweetbattery=0. Do not jump straight to cpus=8.
+- Before userdata overwrite: verified full Android personal-data backup,
+  device-specific recovery and a real recovery path, then explicit destructive
+  approval as required by AGENTS.md. Partition backups do not include personal
+  data, super or a complete stock firmware package. Never use SWEET recovery.
+
+---
+
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
 ## Agent handoff / active work (2026-10-15, latest)
