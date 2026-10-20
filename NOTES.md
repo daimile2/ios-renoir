@@ -1,3 +1,15 @@
+# ACTIVE — 10Hz improvement VERIFIED; Chinese operator/driver guide written
+
+- User confirms option1: noticeably faster feedback with keys-10hz-v2.
+  All physical buttons previously verified. No touch implementation yet.
+  Phone remains on this image; no device operations for documentation.
+- Operator guide ../启动与驱动移植交接指南.md covers exact temporary boot,
+  TWRP log reads, image packaging/CI/QEMU, driver references and SPI plan.
+  Root README replaced stale status with current verified state.
+- Next hardware work remains FT3658U GENI SPI read-only firmware/ID probe;
+  preserve keys and 10Hz baseline. RTC calibration, red text and true
+  battery telemetry remain unimplemented/unresolved.
+
 # ACTIVE HANDOFF — 0084 keys 10Hz v2 RUNNING (2026-10-21)
 
 - User requested touch+power version due to usage limit. No working renoir
