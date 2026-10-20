@@ -158,7 +158,9 @@ void exc_handler(uint64_t slot, uint64_t *regs)
 	con_hex("X0", regs[0]);
 	con_hex("X1", regs[1]);
 	con_hex("X30", regs[29]);	/* stashed lr is just above the frame */
-	reset(40);
+	con_str("STATUS", "exception halted; hold Power to restart");
+	for (;;)
+		__asm__ volatile("wfe");
 }
 
 /* ---- SMP ---- */
@@ -372,6 +374,15 @@ static uint32_t to_us(uint64_t ticks)
 
 void shim_main(uint64_t dtb)
 {
+#if defined(RENOIR_UFS_ONLY)
+	stage = "renoir read-only ufs";
+	con_clear(RED);
+	con_str("SHIM", "renoir UFS probe v1");
+	test_ufs();
+	con_str("STATUS", "probe stopped; hold Power to restart");
+	for (;;)
+		__asm__ volatile("wfe");
+#endif
 #if defined(RENOIR_DISPLAY_ONLY)
 	/* First renoir probe: no UFS, PSCI or unverified reset MMIO. */
 	stage = "renoir display";
@@ -395,6 +406,11 @@ void shim_main(uint64_t dtb)
 	const char *why = loader_boot(dtb);
 	con_str("LOADER", why);
 	con_skip();
+	/* A failed XNU load must remain visible, without entering legacy probes
+	 * or using SWEET's unverified IMEM/PSHOLD reset addresses on renoir. */
+	con_str("STATUS", "loader stopped; hold Power to restart");
+	for (;;)
+		__asm__ volatile("wfe");
 
 	/* No payload: probe the internal UFS while the MMU is still off. */
 	stage = "ufs";

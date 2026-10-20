@@ -7,8 +7,11 @@ OBJCOPY=aarch64-linux-gnu-objcopy
 CFLAGS="-O2 -ffreestanding -nostdlib -fno-pic -mgeneral-regs-only -mstrict-align -fno-stack-protector -Wall -Wextra"
 case "${SHIM_MODE:-display}" in
     display) CFLAGS="$CFLAGS -DRENOIR_DISPLAY_ONLY" ;;
-    full) ;;
-    *) echo "SHIM_MODE must be display or full" >&2; exit 1 ;;
+    ufs) CFLAGS="$CFLAGS -DRENOIR_UFS_ONLY" ;;
+    full)
+        [ -n "${1:-}" ] && [ -s "$1" ] || { echo "full mode requires an XNU payload" >&2; exit 1; }
+        ;;
+    *) echo "SHIM_MODE must be display, ufs or full" >&2; exit 1 ;;
 esac
 DTB_PATH="${DTB_PATH:-../dtb/boot_unpacked/dtb}"
 [ -s "$DTB_PATH" ] || { echo "Missing DTB: $DTB_PATH; set DTB_PATH to the extracted stock vendor_boot DTB" >&2; exit 1; }
