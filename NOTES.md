@@ -1,3 +1,33 @@
+# Renoir latest — LOCAL iOS ROOT VERIFIED, FLASH NOT AUTHORIZED YET
+
+- User executed sudo build wrapper successfully. Read-only fsck says iOSRoot
+  OK. Raw case-sensitive HFS+ HX v5 is 17179869184 bytes; sparse is
+  12145287480 bytes. Independently checked both SHA256 values and streaming
+  sparse expansion; expanded SHA256 exactly equals raw. Report:
+  ../artifacts/ios16-root-20H392-v1-validation.json.
+- Raw SHA256 1c0fa9b7a172efb1e06f4163af468d02bd557026d319f75be602af872276defb.
+  Sparse SHA256 1876d8965d4afb530c3b1d991a4216a8b296fd907fe2161e5bbea9b3b36a51f9.
+- User selected data option 1: important data backed up, may erase AFTER
+  final confirmation. This is NOT final flash authorization.
+- Prepared first iOS boot image using same verified 0083 kernel, cpus=1,
+  writable UFS/root, ignition_level=1, launchd_unsecure_cache=1, sweetlog=1,
+  sweetfb_hz=30, SWEET input/USB/battery disabled. Header v2 unpacked and
+  payload/stock DTB compared. Boot SHA256
+  91cd4c82e456ea6496f5bf75cf7d6170a61b8ea2f1b0f33b607609d0b7d3f9ce.
+- Concrete review ../artifacts/xnu-renoir-0083/phone-ios-v1/FLASH-REVIEW.md
+  and manifest.json. DO NOT BOOT THIS WRITABLE IMAGE BEFORE ROOT FLASH.
+- Rechecked all 17 partition backup hashes: PASS. userdata GPT size
+  241960988672 bytes exceeds 16GiB root. Device currently FASTBOOT.
+- Recovery: TWRP temporary boot verified, but EDL still untested. Original
+  guide requested verified EDL, so final confirmation must explicitly accept
+  that limitation if proceeding with current TWRP recovery preparation.
+- User photo IMG_2708.jpeg privately archived confirms exact previous
+  errors: unknown HFS volume signature 1020, hfs_mountfs error 22,
+  cannot mount root errno 19, BSD root ufsroot0 major2 minor0, retries.
+  It is consistent with existing Android userdata, not a new kernel fault.
+- Root-tweaks warned activation container absent and skipped data ark;
+  investigate actual launchd/SpringBoard logs if activation blocks boot.
+
 # Renoir latest — XNU UFS READ-ONLY DISCOVERY VERIFIED
 
 - User selected option 1 (userdata ... read-only / BSD root ufsroot0),
