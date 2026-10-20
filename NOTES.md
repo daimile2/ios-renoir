@@ -1,3 +1,35 @@
+# Renoir current — IDENTITY v3 TEMPORARY BOOT RUNNING
+
+- diag-v2 remained logo. User FASTBOOT, temporary TWRP, log pulled:
+  ../logs/ios-diag-v2.txt, 139528 bytes flush23; ../logs/ios-diag-v2-symbols.txt.
+- lsd[94] main performJournalRecovery -> dispatch_sync. t4 explicitly waits
+  database seeding. t2 waits a semaphore in libMobileGestalt during
+  MIInstallationIdentity __GenerateBuiltInAppInstallSessionID; t7 MG runloop.
+  These stacks are unchanged between samples0/1. Exact hardware/identity
+  wait identified further by disassembly (see logs/disass-mg-*.txt).
+- __GenerateBuiltInAppInstallSessionID calls MG with CFString
+  re6Zb+zwFKJNlkQTUeT+/w. Independently verified MD5+base64 of
+  MGCopyAnswerUniqueDeviceID matches that key. MG wait code registers
+  IOKit notifications and looks for sdio/wlan/marconi-wifi provider's
+  local-mac-address. Its text also contains mac-address-wifi0 and
+  mac-address-bluetooth0; real IPSW ADT has those placeholder properties
+  under /chosen, but our generated tree omitted them.
+- mkadt-renoir.py now supplies synthetic locally administered six-byte
+  chosen MAC inputs 02:52:45:4e:4f:01 / :02. Candidate fix to avoid physical
+  WLAN wait; NOT yet hardware-verified and not a real Wi-Fi/BT driver.
+- ADT parse/length/value checks pass; restricted-timer QEMU using new ADT
+  reaches test PID1 and two heartbeats with no panic/EL2 trap.
+- v3 ../artifacts/xnu-renoir-0083/phone-ios-identity-v3/shim-boot.img
+  full manifest.json records SHA and args. Same0083 kernel, NO ROOT REFLASH.
+  Unpacked payload/DTB checks passed. adb reboot bootloader took ~20s to
+  enumerate, then Sending/Booting OKAY; ../logs/fastboot-ios-identity-v3.log.
+- CURRENT phone RUNNING v3. Wait for UI observation before rebooting.
+  If still logo after a few minutes, collect log as before. sweetsample
+  includes BOTH MobileGestaltHel (15 chars) and MobileGestaltHelp (16 chars)
+  aliases because sampler uses proc_name/p_comm[MAXCOMLEN+1], not full
+  executable name; prior full-name samples missed some long process names.
+  sweetiolog uses proc_selfname; full MobileGestaltHelper stays there.
+
 # Renoir latest — FIRST iOS LOG READ, DIAGNOSTIC BOOT v2 RUNNING
 
 - First boot remained Apple logo at ~5+ min. User manually returned FASTBOOT;

@@ -21,6 +21,15 @@ def main():
     # Keep xiaomi,sweet for existing IOKit matching, add the actual SoC.
     root.props = [(k, flags, value.replace(b'qcom,sm7150\0', b'qcom,sm7350\0'))
                   for k, flags, value in root.props]
+    # MobileGestalt's UniqueDeviceID path needs these identity inputs even
+    # before real network drivers exist. Renoir's lsd currently waits for
+    # a WLAN controller; supplying these is the next hardware test. These
+    # locally administered addresses are synthetic bring-up identities.
+    chosen = next(child for child in root.children if child.name == 'chosen')
+    chosen.props.extend([
+        ('mac-address-wifi0', 0, bytes.fromhex('0252454e4f01')),
+        ('mac-address-bluetooth0', 0, bytes.fromhex('0252454e4f02')),
+    ])
     blob = mkadt.adt.serialize(root)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_bytes(blob)
