@@ -1,3 +1,22 @@
+# ACTIVE HANDOFF — 0084 keys 10Hz v2 RUNNING (2026-10-21)
+
+- User requested touch+power version due to usage limit. No working renoir
+  touch driver exists yet; informed user, do NOT enable original sweet I2C
+  driver against renoir FT3658U SPI hardware. Power/volume verified in v1.
+- User manually FASTBOOT; temporary boot of ../artifacts/xnu-renoir-0084/
+  phone-keys-10hz-v2/shim-boot.img: Sending and Booting OKAY.
+  Log ../logs/fastboot-keys-0084-10hz-v2.log, manifest in same image dir.
+  Sole change versus keys-v1 is sweetfb_hz=30 -> 10. Same kernel/ADT,
+  cpus=1, keys enabled, touch disabled. No userdata flash. Await user
+  response latency comparison; do not claim performance improvement yet.
+- Next: collect persistent log via temporary TWRP after user FASTBOOT;
+  compare key events/errors and GUI activity. Then implement read-only
+  GENI SPI firmware/chip ID probe before touch events. Official Xiaomi
+  sources/provenance and GPIO/clock/RPMh facts are local (see root facts).
+- Known remaining issues: touch absent, wrong clock (RTC needs persist
+  ats_2 calibration), red fonts need photo; battery icon static placeholder.
+  Preserve identity-v3 and keys-v1 fallbacks. No GPU, only one CPU online.
+
 # Renoir keys milestone — physical buttons VERIFIED, sluggish GUI
 
 - User confirms power, volume up and volume down all effective on 0084.
