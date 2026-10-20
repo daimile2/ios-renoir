@@ -1,4 +1,25 @@
-# Renoir latest — 0083 temporarily booted, awaiting screen evidence
+# Renoir hardware milestone — TEST PID 1 VERIFIED
+
+- User explicitly confirmed "出现 PID 1 / still alive" after temporary
+  0083 boot. XNU kernel, interrupts, scheduling and test userspace now run
+  on real renoir. This is RAM mockfs init, NOT iOS launchd/SpringBoard.
+- Original CNTP fault fixed. Next: same kernel, rd=ufsroot0, ufsrw=0,
+  rootrw=0, sweetlog=0, all sweet PMIC/input/USB probes disabled. Purpose
+  is read-only XNU UFS capacity/GPT/userdata discovery. Android userdata
+  is not HFS+, so a later root filesystem mount failure is EXPECTED.
+  Need screen evidence of SWEET UFS "userdata" ... read-only and BSD root.
+- User entered FASTBOOT; read-only UFS image was temporarily booted:
+  Sending/Booting OKAY. Await phone screen result. Artifacts and manifest:
+  ../artifacts/xnu-renoir-0083/phone-ufs-readonly-v1; fastboot log:
+  ../logs/fastboot-xnu-0083-ufs-v1.log. Payload differs from verified mockfs
+  payload ONLY in cmdline rd=md0 -> rd=ufsroot0; identical kernel/ADT/init.
+- USER PREFERENCE: offer numbered choices so they can reply with a number.
+- Local iOS HFS+ image still absent; host sudo password is unavailable to
+  agent. User must run sudo bash tools/build-ios-root.sh in project folder.
+  This creates local images only. Do not flash userdata without separate
+  explicit destructive confirmation and completed data-backup disposition.
+
+# Historical — 0083 temporary boot preparation
 
 - CI 39444717848 SUCCESS, kernel source 200bb5f89b983d159a75807a4ab4601d7bfff86e.
   Kernel SHA256 6b85628bf834510f916c4952382bdd2c95fa6fecd9f06565d6f43a0ba4d3d804.
