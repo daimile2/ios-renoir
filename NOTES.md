@@ -1,7 +1,7 @@
-# Renoir input phase — 0084 KEYS PATCH, NOT YET HARDWARE TESTED
+# Renoir input phase — 0084 KEYS TEST BOOT (2026-10-21)
 
 - GUI baseline stays on renoir/bringup (0841e84), identity-v3 image retained.
-  Current source branch renoir/input. Phone STILL RUNNING GUI v3.
+  Current source branch renoir/input. GUI v3 log saved before keys test.
 - User finer report: LOCKSCREEN, red font, upward swipe no response, wrong
   clock, no button response; charging indication visible. Touch/keys still
   disabled in v3. Red appearance needs a photo, no diagnosis asserted.
@@ -21,7 +21,15 @@
   must explicitly sweetkeys=1. SPI touch and USB probes remain disabled.
 - Fresh strict patch check: all84 apply without skips. Local LLVM18 object
   compiles of keys+ufs: 0/2 failures, artifacts ../artifacts/renoir-objects-0084.
-  CI/full link and QEMU then hardware still required. Do not claim buttons
+  CI39458056923 SUCCESS at b8bd0fb; all84 patches applied and full link passed.
+  Restricted physical-timer QEMU: PID1 + two heartbeats, no EL2 trap.
+  Phone image ../artifacts/xnu-renoir-0084/phone-keys-v1/shim-boot.img
+  SHA256 7eb2ffb7e7c3b36def5af3cad4bd06b120981b8506a21eb76a6da825a9a2e409.
+  User returned FASTBOOT; temporary TWRP root adb worked. Saved working
+  GUI log ../logs/ios-identity-v3-lockscreen.txt: 206657 bytes, flush113.
+  No userdata reflash. Temporary keys-v1 boot Sending/Booting OKAY,
+  ../logs/fastboot-keys-0084-v1.log. Await user short-press observations;
+  do not reboot before observations. Do not claim buttons
   working until actual physical press/release logs and UI behavior verified.
 - Source staging note: upstream source buildtree UFS was still original81;
   replaced that local compile source with canonical82+0084 version. keys
