@@ -1,3 +1,77 @@
+# Renoir latest — FIRST iOS ROOT BOOT RUNNING, WAITING SCREEN RESULT
+
+- User explicitly authorized userdata erase/flash and accepted untested EDL.
+  All 24 fastboot sparse segments ACKed OKAY in 374.434s. CURRENT userdata
+  contains the iOS HFS+ root; Android user data has been overwritten.
+- Important discovery: fastboot ACKs were insufficient. Recovery readback
+  found final region mismatches (FILL zeros and alternate HFS+ header).
+  Host's actual libsparse re-split final segment contains correct bytes;
+  cause of device tail mismatch remains UNKNOWN. Before-repair evidence:
+  ../artifacts/xnu-renoir-0083/phone-ios-v1/flash-readback-before-repair.json,
+  tail-before.json, resparse-last.simg, readback-last-block.bin.
+- Corrected last 1GiB at userdata offset 16106127360 in TWRP using EXACT
+  same authorized raw image bytes (gzip->dd seek15360 bs1MiB, fsync).
+  Wrote 1073741824 bytes. Then ALL 33 samples matched and FULL 16GiB
+  phone readback SHA256 MATCHED raw image:
+  1c0fa9b7a172efb1e06f4163af468d02bd557026d319f75be602af872276defb.
+  Full device read: 17179869184 bytes, 40.018233s. Log:
+  ../logs/device-root-full-sha256.log. Root bytes now verified, no guessed
+  flash success. Do not compare this immutable image hash after rw iOS boot.
+- TWRP temporary boot right after large flash hung at Booting. User manually
+  reentered FASTBOOT; retry boot succeeded. Initial ADB briefly sideload,
+  then normal recovery root shell appeared (user confirmed TWRP homepage).
+- Current boot_a SHA256 equals backup:
+  587bc3addb659756422e127ffa7545831a1e8a21c74eb1f687ad1cb24822967e.
+  User says preserving SukiSU is optional; no boot partition write performed.
+- adb reboot bootloader, then FIRST real iOS UFS-root boot:
+  ../artifacts/xnu-renoir-0083/phone-ios-v1/shim-boot.img,
+  SHA256 91cd4c82e456ea6496f5bf75cf7d6170a61b8ea2f1b0f33b607609d0b7d3f9ce.
+  Sending/Booting OKAY; ../logs/fastboot-xnu-0083-ios-v1.log.
+- Await user choice: 1 Apple logo/loading, 2 lock/home, 3 panic, 4 logs/black.
+  This is iOS UFS root, NOT prior mockfs test init. cpus=1; sweetlog=1,
+  UFS/root writable; sweet touch/keys/USB/PMIC probes disabled. Touch absent.
+- Next if crash/stuck: user manual FASTBOOT -> temporary TWRP -> wait for
+  NORMAL recovery ADB (not transient sideload), pull persistent ring with
+  tools/sweet-log-pull.sh. DO NOT REFLASH root just to collect logs.
+
+# Renoir latest — USERDATA FLASH COMPLETE, NEED MANUAL FASTBOOT REENTRY
+
+- Final destructive authorization received, explicitly accepting untested EDL.
+- Rehashed reviewed images, then flashed userdata only. All 24 sparse
+  Writing acknowledgments OKAY; process exit 0, total 374.434s. Log:
+  ../logs/fastboot-flash-ios16-root-v1.log. Android userdata is now replaced
+  by prepared iOS HFS+ root. boot/GPT/etc were not flashed.
+- Attempted temporary TWRP boot for readback. Sending 196608KB OKAY,
+  then Booting hung; timeout45 exited124, adb devices empty, phone still
+  enumerates FASTBOOT. DO NOT claim TWRP ran. User asked to manually
+  restart via Power+VolDown into FASTBOOT, then retry temporary TWRP.
+- Once recovery ADB connects: run ../tools/verify-flash-samples.py to
+  compare 33 distributed explicitly-written image regions, including HFS+
+  header. Ignore DONT_CARE ranges (their contents are unspecified).
+  Tool syntax checked, actual device execution still pending.
+- Then adb reboot bootloader and temporary boot prepared phone-ios-v1
+  shim-boot.img. Do not flash userdata again just because boot command hung.
+- User notes SukiSU current boot need not be preserved; reminder only.
+  Current approach still uses temporary boots and no boot partition write.
+
+# Renoir active — AUTHORIZED userdata flash IN PROGRESS
+
+- User explicitly chose final option 1: accepts EDL untested limitation,
+  authorizes erase userdata, flash reviewed iOS root, then temporary boot.
+  Phone FASTBOOT observed. Rehashed sparse+boot images immediately before
+  flash; both match review. Command executing:
+  fastboot -S 512M flash userdata ../artifacts/ios16-root-20H392-v1.simg
+  Log ../logs/fastboot-flash-ios16-root-v1.log (24 sparse segments).
+- User clarified current boot.img includes SukiSU; then said preserving
+  SukiSU boot is not required, only a reminder. Current plan still needs
+  no boot partition write; DO NOT infer need to flash boot from that.
+- fastboot reported bogus AVB footer image size, while verified expansion
+  is 16GiB. Upstream code suggests uninitialized sparse buf->sz warning;
+  analysis/source link ../logs/fastboot-avb-footer-warning-analysis.txt.
+  Need successful flash completion and actual device readback before
+  asserting image content, then temporary iOS boot and logs.
+- All root image / kernel / recovery evidence follows below.
+
 # Renoir latest — LOCAL iOS ROOT VERIFIED, FLASH NOT AUTHORIZED YET
 
 - User executed sudo build wrapper successfully. Read-only fsck says iOSRoot
