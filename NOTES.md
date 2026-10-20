@@ -1,5 +1,35 @@
 # Renoir active handoff — 2026-10-20
 
+## Latest — renoir CI and high-memory QEMU passed
+
+- Own unmodified 81-patch baseline CI 39431933008 succeeded; its kernel also
+  ran init PID 1 with five heartbeats in QEMU (../artifacts/xnu-baseline-own).
+- Renoir 0082 CI 39433341037 succeeded on commit
+  4e32f99ca78d96947c33fc6c2e27a7fa1880009b. Strict required-patch check passed;
+  CI log explicitly shows 0082 applied. Kernel SHA256
+  8ea72d57e5900e1a109a87b49eeca471f6573fef4b4a3ef7907033ca8f4a6800.
+- RENOIR QEMU PASSED: framebuffer 0xe1000000, phys_base 0x200000000,
+  mem_size 0x80000000, rd=md0, cpus=1. Test init PID 1 and five heartbeats
+  visible, no panic in decoded snapshot; qemu/milestone.json records evidence.
+- Host ADT generator corrected: --qemu must use the phone's high physical
+  placement too. SWEET's low b0000000+4d000000 aperture overlaps renoir FB;
+  allocating that range would incorrectly expose framebuffer pages to the VM.
+  QEMU virt RAM is now 9GiB and kernel-managed RAM remains the actual 2GiB.
+- Recovery VERIFIED: official renoir TWRP 3.7.0_11-0 temporarily booted, uid=0,
+  product renoir, userdata block access. First 90s wait expired; it connected
+  later, so no image retry was needed. Rebooted through adb to Android;
+  sys.boot_completed=1 confirmed. No recovery installation performed.
+- All six UFS LUNs primary/backup GPT headers+arrays saved in ../backup/gpt,
+  both header CRCs and both table CRCs checked, partition ranges match.
+- Host free ~48GiB vs Android /data used ~123GiB. User asked about personal
+  backup disposition; do not assume their unanswered question is erase approval.
+- OS/root build wrapper is ready and preflight passed; user has been asked to
+  execute sudo bash tools/build-ios-root.sh. No root image exists yet.
+- Next hardware test: build the 0082 phone ADT and payload with the same
+  mockfs test init, rd=md0 cpus=1 sweetlog=0 ufsrw=0 rootrw=0 sweetusb=0
+  sweetbattery=0; full shim now stops on load failure. Temporary fastboot boot
+  only. This will test real RAM/XPU/GIC/IRQ without depending on the iOS root.
+
 ## Latest — read-only UFS hardware verified (2026-10-20)
 
 - A separate UFS-only shim was built, QEMU checked its unavailable-host stop,

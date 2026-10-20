@@ -14,7 +14,10 @@ def main():
     # The live memory bank is 0x180000000+4GiB; its top 2GiB have no
     # reserved subregions in Android's iomem. XPU access is not yet measured.
     mkadt.HIGH_PHYS_BASE, mkadt.HIGH_MEM_SIZE = 0x200000000, 0x80000000
-    root = mkadt.build(qemu=args.qemu, highmem=not args.qemu)
+    # Keep the phone's physical layout in QEMU too. SWEET's low-memory
+    # QEMU aperture includes 0xe1000000, which would let the VM allocator
+    # reuse the renoir framebuffer as ordinary RAM.
+    root = mkadt.build(qemu=args.qemu, highmem=True)
     # Keep xiaomi,sweet for existing IOKit matching, add the actual SoC.
     root.props = [(k, flags, value.replace(b'qcom,sm7150\0', b'qcom,sm7350\0'))
                   for k, flags, value in root.props]
