@@ -1,3 +1,41 @@
+# Renoir latest — FIRST iOS LOG READ, DIAGNOSTIC BOOT v2 RUNNING
+
+- First boot remained Apple logo at ~5+ min. User manually returned FASTBOOT;
+  temporary TWRP succeeded; normal recovery root adb connected. Pulled:
+  ../logs/ios-first-boot-v1.txt (150997 bytes, flush33, full 4MiB area saved).
+- Real iOS launchd[1], SpringBoard[26], backboardd[56] exec VERIFIED in log.
+  HFS+ root is mounted writable; AppleCLCD publishes 1080x2400 panel with
+  1125x2436 logical display and swap surfaces. No kernel panic in captured
+  log. Do NOT claim lockscreen/main UI: user observed Apple logo only.
+- Samples0/1/2 show SpringBoard main thread in synchronous LS database wait:
+  NSXPC synchronous reply -> _LSCopyServerStore -> _LSContextInitCommon ->
+  LSApplicationRecord init. backboardd t10 similarly waits on
+  LAUNCH_SERVICES_IS_RESEEDING_ITS_DATABASE_AND_MAY_BLOCK. lsd execs once;
+  no lsd samples in first boot. Driverkitd SIGKILL once; bluetooth/fairplay
+  repeat. Exact database-service wait cause NOT established yet.
+- Added root tools/symbolicate-ios-samples.py: parses read-only .symbols
+  local nlist directly, plus optional per-image export dumps; no huge cache
+  generation. ../logs/ios-first-boot-v1-symbols.txt has resolved LS frames.
+  Official ipsw v3.1.739 downloaded and release SHA verified; global a2s
+  fails allocating ~22GiB in ObjC parser, do not repeat. Its per-image
+  symaddr dump works and corrects kernel trap symbols (mach_msg2_trap etc).
+- From TWRP adb reboot bootloader -> temporary diag-v2 Sending/Booting OKAY.
+  ../artifacts/xnu-renoir-0083/phone-ios-diag-v2/shim-boot.img; same kernel,
+  same UFS root, only expanded sweetsample and sweetnull to lsd/installd/
+  containermanagerd/installcoordinationd/cfprefsd plus the GUI processes.
+  NO root reflash. Boot log ../logs/fastboot-ios-diag-v2.log. First sample
+  after90s, then every120s. Collect after ~4min if still logo.
+- Phone currently RUNNING diag-v2, no adb expected. Need user manual FASTBOOT
+  only when collecting logs. Never reboot just to repeat an observation.
+
+# Renoir current observation — APPLE LOGO, WAITING FIRST BOOT
+
+- User selected option 1 after first iOS UFS root boot: Apple logo/loading.
+  No lockscreen/SpringBoard evidence yet. Do not label full iOS boot success.
+- Told user to leave running for several minutes (cpus=1, first boot),
+  then collect persistent log if it remains on logo. sweetlog=1 is enabled.
+- Root full-device readback, temporary boot and artifact evidence below.
+
 # Renoir latest — FIRST iOS ROOT BOOT RUNNING, WAITING SCREEN RESULT
 
 - User explicitly authorized userdata erase/flash and accepted untested EDL.
