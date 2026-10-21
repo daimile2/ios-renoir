@@ -1,0 +1,22 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -463,7 +463,10 @@
+ 	 * actual stage1 translation and AF/TRE enabled. */
+ 	renoir_spi_wr(bank,0,0xc01027);
+ 	uint32_t sctlr=keys_rd(bank,0);
+-	bool readback=(sctlr&0x0fdf11f7)==0xc01027 &&
++	/* Live VA64 bank reads SCTLR bit12 as0 after writing1. Downstream
++	 * also writes ASIDPNE but does not require it to read back. Verify all
++	 * translation/fault/endianness/cache controls, omit only this RAZ bit. */
++	bool readback=(sctlr&0x0fdf01f7)==0xc00027 &&
+ 	    (keys_rd(bank,0x30)&0x0080ffff)==0x802020 &&
+ 	    (keys_rd(bank,0x10)&0x38017)==0x38011 && (keys_rd(smmu,0x1800+4*cb)&1) && keys_rd(bank,0x20)==(uint32_t)renoir_dma_pa &&
+ 	    keys_rd(bank,0x24)==((uint32_t)(renoir_dma_pa>>32)|(asid<<16)) &&
+@@ -473,6 +476,7 @@
+ 		printf("RENOIR DMA MAP: context readback failed SCTLR=%#x TCR=%#x TCR2=%#x TTBR=%#x:%08x CBAR=%#x; SID unpublished\n",
+             sctlr,keys_rd(bank,0x30),keys_rd(bank,0x10),keys_rd(bank,0x24),keys_rd(bank,0x20),keys_rd(smmu,0x1000+4*cb)); return false;
+ 	}
++	printf("RENOIR DMA MAP: context readback passed SCTLR=%#x TCR2=%#x bit12-RAZ accepted; translation/fault controls verified\n",sctlr,keys_rd(bank,0x10));
+ 	uint32_t old_smr=keys_rd(smmu,0x800+4*slot),old_s2cr=keys_rd(smmu,0xc00+4*slot);
+ 	renoir_spi_wr(smmu,0xc00+4*slot,0x300|cb);
+ 	renoir_spi_wr(smmu,0x800+4*slot,0x800004d6);

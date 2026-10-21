@@ -1,3 +1,23 @@
+# ACTIVE — 0094 boundsfix VERIFIED; 0095 bit12 readback fix; SKIP QEMU
+
+- User confirms0094 lockscreen/time/keys normal, manualFASTBOOT then
+  temporaryTWRP/rootadb succeeded. Phone NOW recovery.
+- Pulled ../logs/ios-gpi-dma-0094-v1.txt (132056bytes flush11).
+  Groups0..6 scan completes, no externalabort. SMMU context writes
+  read SCTLRc00027 (requestedc01027: bit12 RAZ), TCR802020,
+  TCR238071, TTBR00ff0002:03904000, CBAR1f300. Strict bit12 check
+  rejected setup; bank disabled, SID unpublished, NO DMA submitted.
+  GPI allchannels release successfully after rejection.
+- 0095 excludes only SCTLR bit12 from required readback. Linux also
+  writes ASIDPNE but does not require readback1. All actualtranslation/
+  fault/endian/cache controls still checked; addresses/guards unchanged.
+- Localobject/repository/95patch strictapply pass. FullCI pending.
+- USER OVERRIDE2026-10-22: skip QEMU going forward, recorded AGENTS.md.
+  Keep localcompile/patchchecks/fullCI and actual phone/log validation;
+  mark QEMU skipped by user, never claim pass. Older QEMU requirements
+  in historical notes/procedure are superseded.
+- User30s reply-or-pause rule remains in force for next requested reply.
+
 # ACTIVE — 0094 TEMPORARY BOOT OKAY; waiting startup before feedback
 
 - TWRP rebootbootloader + Sending/Booting OKAY, no partitionflash.

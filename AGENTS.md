@@ -14,3 +14,8 @@
   recovery, modem, persist and the backups intact, and confirm each
   destructive step with the user before running it.
 - Keep device dumps, serial numbers and downloaded Apple artifacts out of git.
+
+- User override (2026-10-22): skip QEMU tests from now on. Continue local
+  object compile, strict patch application/repository checks and full CI,
+  then temporary phone boot and persistent-log validation. Do not run
+  QEMU automatically based on older notes or original procedure.
