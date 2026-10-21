@@ -1,3 +1,15 @@
+# PAUSED PER USER RULE — no reply within30s after0089 boot question
+
+- Work paused as explicitly requested by user. No device actions after
+  timeout; phone left running temporary0089. Do not reboot/pull/advance
+  until user resumes. CI/QEMU/build and source commits saved below.
+- On resume, ask/observe actual device state first. If user confirms
+  FASTBOOT, temporary TWRP then pull to logs/ios-gpi-smmu-0089-v1.txt.
+  Normal recovery root adb can take30..100s and transient sideload occurs.
+- Image ../artifacts/xnu-renoir-0089/phone-gpi-smmu-v1/shim-boot.img,
+  boot retry Sending/Booting OKAY. GPI/SMMU hardware results NOT known.
+  No DMA or touch events. Preserve0088 time/keys/power/reset fallback.
+
 # ACTIVE — 0089 TEMPORARY BOOT OKAY; user 30s reply-or-pause rule
 
 - User first chose2(pause), immediately corrected to1(continue). Latest1
