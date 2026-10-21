@@ -1,0 +1,59 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -266,7 +266,24 @@
+ 	    keys_rd(tlmm, 21*0x1000), keys_rd(tlmm, 22*0x1000), keys_rd(tlmm, 23*0x1000));
+ 	int power = 0;
+ 	(void)PE_parse_boot_argn("renoirpower", &power, sizeof(power));
+-	if (power && !(keys_rd(se,0x40)&0x1001) && !(keys_rd(se,0x64)&1)) {
++	uint32_t startup_vote = keys_rd(gcc,0x52008);
++	uint32_t fifo_before = keys_rd(se,0x64);
++	if (keys_rd(se,0x40)&0x1001) {
++		printf("RENOIR SPI: busy before clock/power setup; unchanged\n");
++		return;
++	}
++	/* Observe the interface strap with its documented bus/SE gates enabled. */
++	renoir_spi_wr(gcc,0x52008,startup_vote | (1u<<12) | (1u<<6) | (1u<<7));
++	unsigned clock_wait;
++	for (clock_wait=0;clock_wait<1000;++clock_wait) {
++		if (!(keys_rd(gcc,0x1726c)&0x80000000u)) break;
++		delay(1);
++	}
++	printf("RENOIR SPI: power-option=%d fifo-before=%#x fifo-clocked=%#x branch=%#x wait=%u\n",
++	    power,fifo_before,keys_rd(se,0x64),keys_rd(gcc,0x1726c),clock_wait);
++	if (clock_wait==1000)
++		printf("RENOIR SPI: clock not running; power may proceed, transfer withheld\n");
++	if (power) {
+ 		/* Latch reset low before enabling its GPIO output. Preserve drive. */
+ 		uint32_t cfg=keys_rd(tlmm,30*0x1000);
+ 		renoir_spi_wr(tlmm,30*0x1000+4,keys_rd(tlmm,30*0x1000+4)&~2u);
+@@ -274,6 +291,7 @@
+ 		delay(1000);
+ 		if (renoir_touch_power()) {
+ 			printf("RENOIR SPI: power failed; reset remains low, no transfer\n");
++			renoir_spi_wr(gcc,0x52008,startup_vote);
+ 			return;
+ 		}
+ 		delay(10000);
+@@ -282,9 +300,11 @@
+ 		printf("RENOIR SPI: powered reset release cfg=%#x io=%#x\n",
+ 		    keys_rd(tlmm,30*0x1000),keys_rd(tlmm,30*0x1000+4));
+ 	}
+-	if ((keys_rd(se, 0x64) & 1) || (keys_rd(se, 0x40) & 0x1001) ||
++	if (clock_wait==1000 || (keys_rd(se, 0x64) & 1) || (keys_rd(se, 0x40) & 0x1001) ||
+ 	    !(keys_rd(tlmm, 30*0x1000+4) & 1)) {
+-		printf("RENOIR SPI: ID withheld: FIFO unavailable, busy, or reset held low\n");
++		printf("RENOIR SPI: ID withheld fifo-disable=%#x state=%#x reset=%#x; GSI required if FIFO disabled\n",
++		    keys_rd(se,0x64),keys_rd(se,0x40),keys_rd(tlmm,30*0x1000+4));
++		renoir_spi_wr(gcc,0x52008,startup_vote);
+ 		return;
+ 	}
+ 	/* Temporary local SE setup. Preserve root clock, rails and reset. */
+@@ -293,7 +313,7 @@
+ 	    0x274,0x278,0x284,0x288,0x614,0xe18,0xe1c,0xe30};
+ 	uint32_t saved[sizeof(offsets)/sizeof(offsets[0])], pins[4];
+ 	for (unsigned i=0; i<sizeof(saved)/sizeof(saved[0]); ++i) saved[i]=keys_rd(se,offsets[i]);
+-	uint32_t vote=keys_rd(gcc,0x52008);
++	uint32_t vote=startup_vote;
+ 	renoir_spi_wr(gcc,0x52008,vote | (1u<<12) | (1u<<6) | (1u<<7));
+ 	for (unsigned i=0;i<4;++i) {
+ 		pins[i]=keys_rd(tlmm,(20+i)*0x1000);

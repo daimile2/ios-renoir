@@ -1,3 +1,34 @@
+# ACTIVE — 0088 decouple power init from SPI FIFO gate
+
+- User0087 time NORMAL, verified timezone milestone. User FASTBOOT,
+  temporary TWRP/root ready, log ../logs/ios-power-timezone-0087-v1.txt
+  112521bytes flush11. TZ error0 and valid calibrated epoch.
+- 0087 log has NO RPMh lines and NO power/reset-release line. ID withheld
+  immediately. Full renoirpower1 exists in launchd boot-args, so do NOT
+  claim rails/reset initialized or chip ID read. FIFO-disable gate was
+  tested before power; actual FIFO register not printed yet. S/status0.
+- 0088 prints power-option, FIFO-before/clocked, branch and bounded wait.
+  Enables only documented wrapper/S2 votes first, waits max1ms for branch
+  running. Power initialization proceeds independently even if no FIFO or
+  clock; no SPI transfer unless clock ready/FIFO enabled/reset high/idle.
+  Retains 0087 RPMh geometry and reset sequence; restores initial clock
+  votes when returning without an active transfer. Never writes FIFO
+  disable RO register or bypasses GSI-only hardware restriction.
+- If FIFO-disable remains1 with clocks, need GSI/DMA transport port, not
+  blind FIFO retries. Firmware proto1 + FIFO depth16 do not prove FIFO is
+  enabled (downstream driver supports GSI-only via register64).
+- 0087 clock/keys/10Hz baseline retained. Phone now root TWRP. Next full
+  CI -> restricted QEMU -> package power1+ID1+Shanghai1 -> temporary boot.
+  No touch events yet. New patch locally compiles; fresh88 patches check.
+
+# MILESTONE — 0087 local time VERIFIED, touch log collection underway
+
+- User confirms option1: lockscreen time now normal. Canonical Shanghai
+  timezone repair + calibrated RTC verified together on phone.
+- User manually FASTBOOT. Temporary TWRP boot requested to collect
+  ../logs/ios-power-timezone-0087-v1.txt; do not claim SPI ID success until
+  log read. No touch events implemented. Preserve0087 clock/keys baseline.
+
 # ACTIVE — 0087 CI/QEMU PASSED, temporary phone boot RUNNING
 
 - CI39585998521 SUCCESS, source8cd4c546c126a7456dc64547a6663bfc5af9b503.
