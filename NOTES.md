@@ -1,3 +1,27 @@
+# ACTIVE — 0085 RTC calibration + read-only GENI SPI observation
+
+- User requests two targets per image: two drivers or driver+bug fix.
+  Root ../驱动开发顺序.md records plan. Next 0085 pairs read-only GENI
+  status/firmware observation (NOT chip ID or touch) with calibrated RTC.
+- 0085 adds renoirrtc=1 + rtc_offset_ms=<private persist calibration>.
+  PE start reads SID0 PPID061 RTC once coherently (repeat full sample),
+  validates enabled control6146 bit7, takes epoch + uptime snapshot.
+  Platform getGMTTimeOfDay continues from monotonic uptime, no recurring
+  PMIC access, no RTC writes. Missing calibration/probe fails closed to
+  base time behavior. Needs hardware date verification; no suspend claim.
+- renoirspiprobe=1 maps SE988000 and reads firmware68, status40, clock60,
+  FIFO status800/804 and HW params e24/e28. NO GPIO/clock/RPMh/SPI writes,
+  no touch events. Independent opt-in, invoked before keys opt-in check.
+- All85 patches apply on fresh base; repository validation passes.
+  Local LLVM18 objects: keys C + PlatformExpert C++, 0/2 failures.
+  Local buildtree staging updated both sources before compile.
+- xnu-cc recovered C++ commands after fix to CI root inference: previous
+  regex could select '-I/.../dxb' as root. Now infer only absolute source
+  arguments. Added local clang++ symlink (ignored toolchain).
+- Hardware not tested, CI pending. Current phone remains verified0084
+  10Hz image. User suspects missing GPU causes red text; plausible
+  candidate, not established; color test/photo still required.
+
 # ACTIVE — 10Hz improvement VERIFIED; Chinese operator/driver guide written
 
 - User confirms option1: noticeably faster feedback with keys-10hz-v2.

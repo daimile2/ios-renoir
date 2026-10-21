@@ -1,0 +1,174 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -79,6 +79,123 @@
+ 		delay(1);
+ 	}
+ 	return false;
++}
++
++/* Separate RTC observer APID; never issue commands on the key APIDs here. */
++static vm_offset_t rtc_obs;
++static uint16_t rtc_apid = KEYS_NO_APID;
++static uint64_t rtc_offset_ms, rtc_epoch_seconds, rtc_sample_uptime;
++static bool rtc_ready;
++static int rtc_hw_seconds(uint64_t *seconds);
++
++void renoir_rtc_init(void);
++int renoir_rtc_seconds(uint64_t *seconds);
++
++static bool
++rtc_read(uint16_t addr, uint8_t *out)
++{
++	uint32_t off = 0x80u * rtc_apid;
++	__asm__ volatile("dmb oshst" ::: "memory");
++	*(volatile uint32_t *)(rtc_obs + off) = (1u << 27) | ((addr & 0xffu) << 4);
++	__asm__ volatile("dsb osh" ::: "memory");
++	for (unsigned i = 0; i < 1000; ++i) {
++		uint32_t status = keys_rd(rtc_obs, off + 8);
++		if (status & 1u) {
++			if (status & 0x0eu) return false;
++			*out = (uint8_t)keys_rd(rtc_obs, off + 0x18);
++			return true;
++		}
++		delay(1);
++	}
++	return false;
++}
++
++void
++renoir_rtc_init(void)
++{
++	int enabled = 0;
++	(void)PE_parse_boot_argn("renoirrtc", &enabled, sizeof(enabled));
++	if (!enabled || !PE_parse_boot_argn("rtc_offset_ms", &rtc_offset_ms,
++	    sizeof(rtc_offset_ms)) || rtc_offset_ms < 1577836800000ULL ||
++	    rtc_offset_ms > 4102444800000ULL) {
++		printf("RENOIR RTC: disabled or missing calibration; PMIC unchanged\n");
++		return;
++	}
++	vm_offset_t core = ml_io_map(KEYS_CORE_PA, 0x2000);
++	vm_offset_t cfg = ml_io_map(KEYS_CNFG_PA, 0x1000);
++	rtc_obs = ml_io_map(KEYS_OBS_PA, 0x10000);
++	if (!core || !cfg || !rtc_obs) return;
++	uint32_t version = keys_rd(core, 0), count = keys_rd(core, 4) & 0x7ff;
++	if (version < 0x50000000u || version >= 0x70000000u || !count || count > 512) return;
++	for (uint32_t i = 0; i < count; ++i) {
++		uint32_t map = keys_rd(core, 0x900 + 4 * i);
++		if (map && ((map >> 8) & 0xfff) == 0x061 &&
++		    (rtc_apid == KEYS_NO_APID || (keys_rd(cfg, 0x700 + 4 * i) & 7) == 0))
++			rtc_apid = (uint16_t)i;
++	}
++	uint8_t ctrl = 0;
++	if (rtc_apid == KEYS_NO_APID || !rtc_read(0x6146, &ctrl) || !(ctrl & 0x80)) {
++		rtc_apid = KEYS_NO_APID;
++		printf("RENOIR RTC: unavailable or disabled; PMIC unchanged\n");
++		return;
++	}
++	if (!rtc_hw_seconds(&rtc_epoch_seconds)) {
++		printf("RENOIR RTC: coherent sample failed; PMIC unchanged\n");
++		return;
++	}
++	clock_get_uptime(&rtc_sample_uptime);
++	rtc_ready = true;
++	printf("RENOIR RTC: calibrated sample epoch=%llu apid=%u; monotonic continuation\n",
++	    rtc_epoch_seconds, rtc_apid);
++}
++
++static int
++rtc_hw_seconds(uint64_t *seconds)
++{
++	if (rtc_apid == KEYS_NO_APID) return 0;
++	/* Repeat full reads until coherent, including a possible low-byte rollover. */
++	for (unsigned attempt = 0; attempt < 3; ++attempt) {
++		uint32_t value[2] = {0, 0};
++		for (unsigned n = 0; n < 2; ++n) {
++			for (unsigned b = 0; b < 4; ++b) {
++				uint8_t v;
++				if (!rtc_read((uint16_t)(0x6148 + b), &v)) return 0;
++				value[n] |= (uint32_t)v << (8 * b);
++			}
++		}
++		if (value[0] == value[1]) {
++			*seconds = (rtc_offset_ms + (uint64_t)value[0] * 1000) / 1000;
++			return 1;
++		}
++	}
++	return 0;
++}
++
++/* Never access SPMI from platform time callbacks or compete with key polling. */
++int
++renoir_rtc_seconds(uint64_t *seconds)
++{
++	uint64_t now, elapsed_ns;
++	if (!rtc_ready) return 0;
++	clock_get_uptime(&now);
++	absolutetime_to_nanoseconds(now - rtc_sample_uptime, &elapsed_ns);
++	*seconds = rtc_epoch_seconds + elapsed_ns / NSEC_PER_SEC;
++	return 1;
++}
++
++/* Stage 1 only: read GENI firmware/status, do not clock/reset/configure SPI. */
++static void
++renoir_spi_probe(void)
++{
++	int enabled = 0;
++	(void)PE_parse_boot_argn("renoirspiprobe", &enabled, sizeof(enabled));
++	if (!enabled) return;
++	vm_offset_t se = ml_io_map(0x00988000u, 0x1000);
++	if (!se) { printf("RENOIR SPI: MMIO mapping failed\n"); return; }
++	uint32_t fw = keys_rd(se, 0x68);
++	printf("RENOIR SPI: read-only fw=%#x protocol=%u status=%#x clk=%#x tx=%#x rx=%#x hw0=%#x hw1=%#x; no touch events\n",
++	    fw, (fw >> 8) & 0xff, keys_rd(se, 0x40), keys_rd(se, 0x60),
++	    keys_rd(se, 0x800), keys_rd(se, 0x804), keys_rd(se, 0xe24), keys_rd(se, 0xe28));
+ }
+ 
+ static void
+@@ -127,6 +244,7 @@
+ {
+ 	int enabled = 0;
+ 	thread_t thread;
++	renoir_spi_probe();
+ 	if (keys_started) {
+ 		return;
+ 	}
+--- a/iokit/Kernel/arm/SweetPlatformExpert.cpp
++++ b/iokit/Kernel/arm/SweetPlatformExpert.cpp
+@@ -10,11 +10,15 @@
+ #include <IOKit/IODeviceTreeSupport.h>
+ #include <IOKit/IOLib.h>
+ 
++extern "C" void renoir_rtc_init(void);
++extern "C" int renoir_rtc_seconds(uint64_t *seconds);
++
+ class SweetPlatformExpert : public IODTPlatformExpert {
+ 	OSDeclareDefaultStructors(SweetPlatformExpert);
+ 
+ public:
+ 	bool start(IOService *provider) APPLE_KEXT_OVERRIDE;
++	long getGMTTimeOfDay(void) APPLE_KEXT_OVERRIDE;
+ 	void processTopLevel(IORegistryEntry *root) APPLE_KEXT_OVERRIDE;
+ 	const char *deleteList(void) APPLE_KEXT_OVERRIDE;
+ 	const char *excludeList(void) APPLE_KEXT_OVERRIDE;
+@@ -26,12 +30,21 @@
+ SweetPlatformExpert::start(IOService *provider)
+ {
+ 	IOLog("SWEET: starting device-tree platform expert\n");
++	renoir_rtc_init();
+ 	if (!IODTPlatformExpert::start(provider)) {
+ 		return false;
+ 	}
+ 	registerService();
+ 	IOLog("SWEET: platform expert registered\n");
+ 	return true;
++}
++
++long
++SweetPlatformExpert::getGMTTimeOfDay(void)
++{
++	uint64_t seconds = 0;
++	if (renoir_rtc_seconds(&seconds)) return (long)seconds;
++	return IODTPlatformExpert::getGMTTimeOfDay();
+ }
+ 
+ const char *

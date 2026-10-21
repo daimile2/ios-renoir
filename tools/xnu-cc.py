@@ -45,7 +45,8 @@ def commands(log):
         # Fork runner paths contain the fork's name, not ios-sweet. Infer
         # the actual build root before matching or rewriting source paths.
         if not seen and 'XNU_CC_CI_DXB' not in os.environ:
-            roots = [re.match(r'(.*/dxb)/xnu/', arg) for arg in args]
+            roots = [re.match(r'(/.*/dxb)/xnu/', arg) for arg in args
+                     if re.search(r'\.(c|cpp|s|S)$', arg)]
             root = next((match.group(1) for match in roots if match), None)
             if root:
                 CI_DXB = root
