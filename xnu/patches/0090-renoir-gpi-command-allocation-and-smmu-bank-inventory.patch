@@ -1,0 +1,144 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -268,10 +268,14 @@
+ 		return;
+ 	}
+ 	unsigned groups=id0&0xff, matches=0;
++	bool used_cb[256]={false};
++	unsigned free_smr=0, first_free_smr=256;
+ 	bool exid=!!(cr0&(1u<<3));
+ 	for(unsigned i=0;i<groups;++i) {
+ 		uint32_t smr=keys_rd(smmu,0x800+4*i), s2cr=keys_rd(smmu,0xc00+4*i);
+ 		bool valid=exid ? !!(s2cr&(1u<<10)) : !!(smr&(1u<<31));
++		if(valid && ((s2cr>>16)&3)==0) used_cb[s2cr&0xff]=true;
++		if(!valid) { ++free_smr; if(first_free_smr==256) first_free_smr=i; }
+ 		uint32_t sidmask=exid ? 0xffffu : 0x7fffu;
+ 		uint32_t mask=(smr>>16)&sidmask;
+ 		if(valid && !((0x4d6u^smr)&~mask&sidmask)) {
+@@ -280,8 +284,118 @@
+ 			    i,smr,s2cr,(s2cr>>16)&3,s2cr&0xff);
+ 		}
+ 	}
++	unsigned page_shift=(id1&(1u<<31))?16:12;
++	unsigned numpages=1u<<(((id1>>28)&7)+1);
++	unsigned banks=id1&0xff;
++	printf("RENOIR SMMU: S1=%u ATS-supported=%u free-SMR=%u first=%u banks=%u page-shift=%u CB-offset=%#x\n",
++	    (id0>>30)&1,!(id0&(1u<<26)),free_smr,first_free_smr,banks,page_shift,numpages<<page_shift);
++	/* ATOSNS=1 on this v2 means ATS1PR/PAR translation test unsupported.
++	 * Never issue it. Inventory only unused bank registers, no SMMU writes. */
++	if(page_shift==12 && numpages==128 && banks<=64) {
++		vm_offset_t cbregs=ml_io_map(0x15080000u,(vm_size_t)banks<<12);
++		if(cbregs) {
++			unsigned inspected=0;
++			for(unsigned cb=0;cb<banks && inspected<3;++cb) {
++				if(used_cb[cb]) continue;
++				uint32_t off=cb<<12;
++				printf("RENOIR SMMU CB: unreferenced=%u sctlr=%#x cbar=%#x cba2r=%#x ttbr0=%#x:%08x ttbr1=%#x:%08x fsr=%#x; candidate only\n",
++				    cb,keys_rd(cbregs,off),keys_rd(smmu,0x1000+4*cb),
++				    keys_rd(smmu,0x1800+4*cb),keys_rd(cbregs,off+0x24),
++				    keys_rd(cbregs,off+0x20),keys_rd(cbregs,off+0x2c),
++				    keys_rd(cbregs,off+0x28),keys_rd(cbregs,off+0x58));
++				++inspected;
++			}
++		}
++	}
+ 	printf("RENOIR SMMU: groups=%u exid=%d matches=%u clientpd=%u; no register writes or DMA\n",
+ 	    groups,exid,matches,cr0&1);
++}
++
++/* No ring programming, START or doorbells: exercise only the command
++ * allocator of one pristine dynamic group. Linux DE_ALLOC completion does
++ * NOT update the hardware state field; require a fresh control status bit.
++ * Poll the source status with the output IRQ masked (no GIC handler yet). */
++static bool
++renoir_gpi_command(vm_offset_t regs, uint32_t base, unsigned channel,
++    bool event, unsigned opcode)
++{
++	uint32_t status=base+(event?0x3094:0x3090);
++	uint32_t clear=base+(event?0x30a4:0x30a0);
++	uint32_t bit=event?1u:(1u<<channel);
++	uint32_t context=base+(event?0x1000:0x80*channel);
++	/* Only clear our own command-completion bit. */
++	renoir_spi_wr(regs,clear,bit);
++	if(keys_rd(regs,status)&bit) {
++		printf("RENOIR GPI CMD: stale status cannot clear; command withheld\n");
++		return false;
++	}
++	renoir_spi_wr(regs,base+(event?0x3010:0x3008),
++	    (opcode<<24)|(event?0:channel));
++	unsigned us;
++	for(us=0;us<250000;us+=10) {
++		if(keys_rd(regs,status)&bit) break;
++		delay(10);
++	}
++	uint32_t state=(keys_rd(regs,context)>>20)&15;
++	bool fresh=us<250000;
++	if(fresh) renoir_spi_wr(regs,clear,bit);
++	printf("RENOIR GPI CMD: %s ch=%u op=%u fresh=%d state=%u wait-us=%u error=%#x\n",
++	    event?"EV":"CH",channel,opcode,fresh,state,us,keys_rd(regs,base+0x3200));
++	/* Downstream driver treats completed DEALLOC as software state0 even
++	 * if the hardware context still reports ALLOCATED. */
++	return fresh && (opcode==10 || state==1);
++}
++
++static void
++renoir_gpi_allocator(vm_offset_t regs)
++{
++	int enabled=0;
++	(void)PE_parse_boot_argn("renoirgpialloc",&enabled,sizeof(enabled));
++	if(!enabled) return;
++	unsigned group;
++	uint32_t base=0;
++	for(group=1;group<=6;++group) {
++		base=0x10000+group*0x4000;
++		bool pristine=true;
++		/* Exclude active, configured or pending groups. Check both rings
++		 * and event context, scratch, source status and IRQ masks. */
++		for(unsigned c=0;c<3;++c) {
++			uint32_t off=base+(c==2?0x1000:c*0x80);
++			for(unsigned r=0;r<=0x34;r+=4)
++				if(keys_rd(regs,off+r)) pristine=false;
++		}
++		for(unsigned c=0;c<2;++c)
++			for(unsigned r=0x60;r<=0x6c;r+=4)
++				if(keys_rd(regs,base+c*0x80+r)) pristine=false;
++		const uint32_t checks[]={0x3080,0x3088,0x3090,0x3094,
++		    0x3098,0x309c,0x30b0,0x30b8,0x3100,0x3108,0x3118,0x3120};
++		for(unsigned i=0;i<sizeof(checks)/sizeof(checks[0]);++i)
++			if(keys_rd(regs,base+checks[i])) pristine=false;
++		if(pristine) break;
++	}
++	if(group>6) {
++		printf("RENOIR GPI ALLOC: no pristine dynamic group; unchanged\n");
++		return;
++	}
++	printf("RENOIR GPI ALLOC: group=%u pristine; output IRQ masked; no ring/START/doorbell/DMA\n",group);
++	/* Keep type output mask zero; source masks collect command status.
++	 * No MSI routing, global IRQ, shared GPI reset or firmware writes. */
++	renoir_spi_wr(regs,base+0x3098,3);
++	renoir_spi_wr(regs,base+0x309c,1);
++	bool ev=false, tx=false, rx=false, ok=true;
++	ev=renoir_gpi_command(regs,base,0,true,0);
++	if(ev) tx=renoir_gpi_command(regs,base,0,false,0);
++	if(tx) rx=renoir_gpi_command(regs,base,1,false,0);
++	ok=ev&&tx&&rx;
++	/* No STOP/RESET: no channel was started. On timeout ownership is
++	 * uncertain; do not retry another group or reset shared hardware. */
++	if(rx) ok=renoir_gpi_command(regs,base,1,false,10)&&ok;
++	if(tx) ok=renoir_gpi_command(regs,base,0,false,10)&&ok;
++	if(ev) ok=renoir_gpi_command(regs,base,0,true,10)&&ok;
++	renoir_spi_wr(regs,base+0x3098,0);
++	renoir_spi_wr(regs,base+0x309c,0);
++	printf("RENOIR GPI ALLOC: group=%u allocate/release=%d ev=%d tx=%d rx=%d; failed commands require reboot; DMA never submitted\n",
++	    group,ok,ev,tx,rx);
+ }
+ 
+ /* Live DT: gpi-top900000, EE offset10000. Downstream subtracts the EE
+@@ -307,6 +421,7 @@
+ 	}
+ 	printf("RENOIR GPI: state-only unallocated candidates=%u; ownership/rings/IOMMU not configured\n",candidates);
+ 	renoir_gpi_smmu_probe();
++	renoir_gpi_allocator(regs);
+ }
+ 
+ static void

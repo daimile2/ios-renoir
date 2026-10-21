@@ -1,3 +1,25 @@
+# ACTIVE — resumed; 0089 logs read, 0090 command-only allocator prepared
+
+- User resumed with1 then explicit continue. Phone observed root TWRP adb.
+- Read ../logs/ios-gpi-smmu-0089-v1.txt (191305bytes, flush356).
+  Dynamic GPI1..6 TX/RX/EV state0/scratch0. SID4d6 no matching SMR;
+  CR0=280406 (unmatched streams fault), ID0=4c017e59, ID1=6000003c,
+  ID2=5111. No DMA submitted and no touch ID/events yet.
+- Pinned Xiaomi arm-smmu.c confirms ID0_ATOSNS=1 means ATS translation
+  operations unsupported on v2. Do NOT issue ATS1PR/PAR self-test.
+- 0090 adds opt-in renoirgpialloc1 command-only allocate/release for
+  a pristine DT dynamic group. Checks all ring/context/scratch/status/
+  masks before use, leaves type output IRQ masked, polls fresh source
+  completion with bounded timeout, restores source masks. No START,
+  doorbell, ring address, SMMU writes or DMA. DEALLOC does not clear HW
+  state per downstream driver; fresh completion is required instead.
+- SMMU read-only inventory includes free SMR count, bank geometry and
+  first3 unreferenced CB register states. Not proof that a bank is ours.
+- Local sweet_keys.c object build and repository validation pass. Full
+  patch series / CI / QEMU / phone validation pending. No0090 image yet.
+- Existing0088 time/keys/10Hz/power/reset baseline preserved. User30s
+  reply-or-pause rule applies to next requested feedback/action.
+
 # PAUSED PER USER RULE — no reply within30s after0089 boot question
 
 - Work paused as explicitly requested by user. No device actions after
