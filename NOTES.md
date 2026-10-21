@@ -1,3 +1,30 @@
+# ACTIVE — 0088 power/reset VERIFIED, GSI-only interface CONFIRMED; 0089 probe
+
+- Pulled ../logs/ios-power-fifo-0088-v1.txt (114141bytes flush11) via
+  temporary TWRP. Phone now root TWRP, no root reflash.
+- Clock vote works: branch4220 wait1us; FIFO-disable1 before and after.
+  RSCid20300/v2 config800c8104 TCS8 ncpt16, cmd-db version1 validmagic.
+  ldoc2 addr42800 and ldoc7 addr41400; TCS2 idle/empty, both 1.8V/3.3V
+  requests complete with fresh progress and cmd-status10101. No timeout.
+  Reset GPIO30 cfg200 IO3 (high). These prove request/sequence completion,
+  not an analog voltage measurement. ID withheld because FIFO disabled1.
+- Need GSI/DMA transport, not blind FIFO writes or firmware-bit forcing.
+- 0089 renoirgpiprobe1 adds ONLY read-only GPI/SMMU state. DT GPI top900000
+  EE offset10000 is SUBTRACTED in pinned Linux driver (not added!). Map
+  actual top, compute context offset10000+4000*g; dynamic GPIIs1..6 mask7e,
+  read TX/RX/event cfg, state, scratch, IRQ/error. No allocate/start/reset,
+  no doorbell, no ring DMA. State0 is a candidate, not ownership proof.
+- Target DMA SID4d6 maps apps-SMMU15000000. Read ID0/1/2 and CR0, then
+  bounded valid SMR/S2CR matches only. Handle EXID validbit10 and normal
+  SMR bit31. Print match type/CB. No SMMU writes, bypass, global reset or
+  memory table changes. No DMA until mapping+channel ownership known.
+- Pinned arm-smmu.h + provenance saved beside GPI references. Live DT
+  declares qcom,skip-init and LE-VM, so never reset shared SMMU.
+- Local LLVM18 keys object0fail, clean89 patches and repo validation pass.
+  Full CI/QEMU/hardware pending. Root packager new RENOIR_GPI_PROBE=1
+  option requires0089+; use with power/ID/Shanghai options. Still no touch
+  events. Known-working baseline0088 retains time/keys10Hz and power ack.
+
 # ACTIVE — 0088 CI/QEMU PASSED; power/FIFO diagnostic boot RUNNING
 
 - CI39588141935 SUCCESS sourceb1765faef896ecc56487350c8337b4f1800ca461.

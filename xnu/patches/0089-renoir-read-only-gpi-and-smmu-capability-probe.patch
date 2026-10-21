@@ -1,0 +1,75 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -253,6 +253,62 @@
+ 	return false;
+ }
+ 
++/* Read-only SMMUv2 stream matching for the live-DT GPI SID, not a bypass. */
++static void
++renoir_gpi_smmu_probe(void)
++{
++	vm_offset_t smmu = ml_io_map(0x15000000u, 0x4000);
++	if (!smmu) { printf("RENOIR SMMU: mapping failed\n"); return; }
++	uint32_t cr0=keys_rd(smmu,0), id0=keys_rd(smmu,0x20);
++	uint32_t id1=keys_rd(smmu,0x24), id2=keys_rd(smmu,0x28);
++	printf("RENOIR SMMU: read-only base=0x15000000 cr0=%#x id0=%#x id1=%#x id2=%#x target-sid=0x4d6\n",
++	    cr0,id0,id1,id2);
++	if (!id0 || id0==0xffffffffu || cr0==0xffffffffu || !(id0&(1u<<27))) {
++		printf("RENOIR SMMU: unsupported/unreadable stream-match layout; DMA withheld\n");
++		return;
++	}
++	unsigned groups=id0&0xff, matches=0;
++	bool exid=!!(cr0&(1u<<3));
++	for(unsigned i=0;i<groups;++i) {
++		uint32_t smr=keys_rd(smmu,0x800+4*i), s2cr=keys_rd(smmu,0xc00+4*i);
++		bool valid=exid ? !!(s2cr&(1u<<10)) : !!(smr&(1u<<31));
++		uint32_t sidmask=exid ? 0xffffu : 0x7fffu;
++		uint32_t mask=(smr>>16)&sidmask;
++		if(valid && !((0x4d6u^smr)&~mask&sidmask)) {
++			++matches;
++			printf("RENOIR SMMU: GPI stream match index=%u smr=%#x s2cr=%#x type=%u cb=%u\n",
++			    i,smr,s2cr,(s2cr>>16)&3,s2cr&0xff);
++		}
++	}
++	printf("RENOIR SMMU: groups=%u exid=%d matches=%u clientpd=%u; no register writes or DMA\n",
++	    groups,exid,matches,cr0&1);
++}
++
++/* Live DT: gpi-top900000, EE offset10000. Downstream subtracts the EE
++ * offset, it does NOT add it. Probe only dynamic GPIIs in DT mask0x7e.
++ * A zero channel state is only a candidate, never proof of ownership. */
++static void
++renoir_gpi_probe(void)
++{
++	vm_offset_t regs=ml_io_map(0x00900000u,0x60000);
++	if(!regs) { printf("RENOIR GPI: mapping failed\n"); return; }
++	printf("RENOIR GPI: read-only top=0x900000 ee-subtract=0x10000 dynamic-mask=0x7e SE=2 proto=SPI; no channel commands\n");
++	unsigned candidates=0;
++	for(unsigned g=1;g<=6;++g) {
++		uint32_t base=0x10000+0x4000*g;
++		uint32_t tx=keys_rd(regs,base),rx=keys_rd(regs,base+0x80);
++		uint32_t ev=keys_rd(regs,base+0x1000);
++		printf("RENOIR GPI: gpii=%u tx=%#x rx=%#x ev=%#x states=%u/%u/%u scratch=%#x/%#x irqtype=%#x error=%#x\n",
++		    g,tx,rx,ev,(tx>>20)&15,(rx>>20)&15,(ev>>20)&15,
++		    keys_rd(regs,base+0x60),keys_rd(regs,base+0xe0),
++		    keys_rd(regs,base+0x3080),keys_rd(regs,base+0x3200));
++		if(tx!=0xffffffffu && rx!=0xffffffffu && ev!=0xffffffffu &&
++		    !(((tx|rx|ev)>>20)&15)) ++candidates;
++	}
++	printf("RENOIR GPI: state-only unallocated candidates=%u; ownership/rings/IOMMU not configured\n",candidates);
++	renoir_gpi_smmu_probe();
++}
++
+ static void
+ renoir_spi_id(vm_offset_t se)
+ {
+@@ -300,6 +356,9 @@
+ 		printf("RENOIR SPI: powered reset release cfg=%#x io=%#x\n",
+ 		    keys_rd(tlmm,30*0x1000),keys_rd(tlmm,30*0x1000+4));
+ 	}
++	int gpi_probe = 0;
++	(void)PE_parse_boot_argn("renoirgpiprobe", &gpi_probe, sizeof(gpi_probe));
++	if (gpi_probe && clock_wait < 1000) renoir_gpi_probe();
+ 	if (clock_wait==1000 || (keys_rd(se, 0x64) & 1) || (keys_rd(se, 0x40) & 0x1001) ||
+ 	    !(keys_rd(tlmm, 30*0x1000+4) & 1)) {
+ 		printf("RENOIR SPI: ID withheld fifo-disable=%#x state=%#x reset=%#x; GSI required if FIFO disabled\n",
