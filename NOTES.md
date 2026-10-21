@@ -1,3 +1,21 @@
+# ACTIVE — 0093 CI/QEMU PASS; preparing isolated DMA temporaryboot
+
+- Source2409d6a47928a723077a77074fdfa5c85518a674 CI39635864693 SUCCESS,
+  explicit0093 apply. Kernel SHA256
+  1c933a2466b35a41fb68cc1afbe110d56499bc9b663be61a4c9e7d54aacb0358.
+- Localobject/repository/93patch strictapply pass; QEMU45s PID1+two
+  heartbeats, zero unknown glyphs, no panic observed. HW paths disabled.
+- Main ../artifacts/xnu-renoir-0093/phone-gpi-dma-v1/shim-boot.img SHA
+  91c237562864e76a863d718a37ea9022f8e045e91eb4955d28907631f4ff362c.
+  args592bytes inclNUL; unpack payload/stockDTB cmp pass. Opt-in map+NOP.
+- Samekernel noDMA ../artifacts/xnu-renoir-0093/phone-gpi-alloc-fallback-v1/
+  shim-boot.img SHA a36946dc9df4d20d1c0fa404bb10003266b90f70754bc0306c999f48473d6da4.
+  Fallback args577bytes, noSMMU writes/START/doorbell. Also keep0088.
+- Phone rootTWRP; next rebootbootloader + temporaryboot MAIN archived
+  image (shim/out currently holds fallback, DO NOT boot it by mistake).
+- No0093 phone/DMA result yet. No SPI chip access or touch events.
+  User30s reply-or-pause rule persists after next observation request.
+
 # ACTIVE — 0093 isolated SID mapping + NOP DMA prepared; phone TWRP
 
 - 0092 actual GPI EV/TX/RX allocate/deallocate verified (see below).
