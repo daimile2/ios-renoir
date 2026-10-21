@@ -1,3 +1,20 @@
+# ACTIVE — 0095 CI PASS; QEMU SKIPPED per user; preparing phoneboot
+
+- Sourcef96f64b683dfe75c997bec6ac15b0941ee3648d6 CI39641240765 SUCCESS,
+  explicit0095 apply. Kernel SHA256
+  65aaf45ff5f8b00043bb309cf55cb866c803bf756519a44f744d333a321f5d02.
+- Localobject/repository/95patch strictapply pass. QEMU NOT RUN per
+  user2026-10-22 override, recorded AGENTS.md andimage manifests.
+- MAIN ../artifacts/xnu-renoir-0095/phone-gpi-dma-v1/shim-boot.img SHA
+  e9ddd6d8fdbe92ad930f0b5151cb1c559e88c59f2aec632ba1447d5c86237701.
+  args592bytes inclNUL, unpack payload/stockDTB cmp pass.
+- Samekernel noDMA phone-gpi-alloc-fallback-v1/shim-boot.img SHA
+  4356c21f151eb8e997f4031d33a9d3c66746856cd4e1d1650a40349c4e7a3742.
+  args577bytes. shim/out currently holds fallback, boot archivedMAIN.
+- Phone rootTWRP; next rebootbootloader + temporary0095. No0095 phone/
+  mapping/DMA result yet. No SPI chip access or touch events.
+- User30s reply-or-pause rule persists for next requested observation.
+
 # ACTIVE — 0094 boundsfix VERIFIED; 0095 bit12 readback fix; SKIP QEMU
 
 - User confirms0094 lockscreen/time/keys normal, manualFASTBOOT then
