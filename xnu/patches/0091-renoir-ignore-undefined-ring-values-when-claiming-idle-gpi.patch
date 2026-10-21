@@ -1,0 +1,75 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -312,7 +312,7 @@
+ }
+ 
+ /* No ring programming, START or doorbells: exercise only the command
+- * allocator of one pristine dynamic group. Linux DE_ALLOC completion does
++ * allocator of one idle, unassociated dynamic group. Linux DE_ALLOC completion does
+  * NOT update the hardware state field; require a fresh control status bit.
+  * Poll the source status with the output IRQ masked (no GIC handler yet). */
+ static bool
+@@ -356,30 +356,32 @@
+ 	uint32_t base=0;
+ 	for(group=1;group<=6;++group) {
+ 		base=0x10000+group*0x4000;
+-		bool pristine=true;
+-		/* Exclude active, configured or pending groups. Check both rings
+-		 * and event context, scratch, source status and IRQ masks. */
+-		for(unsigned c=0;c<3;++c) {
+-			uint32_t off=base+(c==2?0x1000:c*0x80);
+-			for(unsigned r=0;r<=0x34;r+=4)
+-				if(keys_rd(regs,off+r)) pristine=false;
+-		}
+-		for(unsigned c=0;c<2;++c)
+-			for(unsigned r=0x60;r<=0x6c;r+=4)
+-				if(keys_rd(regs,base+c*0x80+r)) pristine=false;
+-		const uint32_t checks[]={0x3080,0x3088,0x3090,0x3094,
+-		    0x3098,0x309c,0x30b0,0x30b8,0x3100,0x3108,0x3118,0x3120};
+-		for(unsigned i=0;i<sizeof(checks)/sizeof(checks[0]);++i)
+-			if(keys_rd(regs,base+checks[i])) pristine=false;
+-		if(pristine) break;
++		uint32_t tx=keys_rd(regs,base), rx=keys_rd(regs,base+0x80);
++		uint32_t ev=keys_rd(regs,base+0x1000);
++		uint32_t scratch0=keys_rd(regs,base+0x60);
++		uint32_t scratch1=keys_rd(regs,base+0xe0);
++		uint32_t output=keys_rd(regs,base+0x3088);
++		/* Unallocated ring pointers and scratch1..3 are undefined, not
++		 * ownership markers. 0090 incorrectly required them all zero.
++		 * DT grants dynamic groups1..6 to this EE. State0 plus no protocol
++		 * association/output IRQ permits an ALLOCATE ownership request;
++		 * only fresh command completion can establish that it succeeded. */
++		bool idle=tx!=0xffffffffu && rx!=0xffffffffu && ev!=0xffffffffu &&
++		    !(((tx|rx|ev)>>20)&15) && !(tx&7) && !(rx&7) && !(ev&15) &&
++		    !scratch0 && !scratch1 && !output;
++		printf("RENOIR GPI SELECT: group=%u idle=%d cfg=%#x/%#x/%#x scratch0=%#x/%#x output-mask=%#x unused-ring-values-ignored\n",
++		    group,idle,tx,rx,ev,scratch0,scratch1,output);
++		if(idle) break;
+ 	}
+ 	if(group>6) {
+-		printf("RENOIR GPI ALLOC: no pristine dynamic group; unchanged\n");
+-		return;
+-	}
+-	printf("RENOIR GPI ALLOC: group=%u pristine; output IRQ masked; no ring/START/doorbell/DMA\n",group);
++		printf("RENOIR GPI ALLOC: no idle unassociated dynamic group; unchanged\n");
++		return;
++	}
++	printf("RENOIR GPI ALLOC: group=%u idle/unassociated; request ownership, output IRQ masked; no ring/START/doorbell/DMA\n",group);
+ 	/* Keep type output mask zero; source masks collect command status.
+ 	 * No MSI routing, global IRQ, shared GPI reset or firmware writes. */
++	uint32_t chmask=keys_rd(regs,base+0x3098);
++	uint32_t evmask=keys_rd(regs,base+0x309c);
+ 	renoir_spi_wr(regs,base+0x3098,3);
+ 	renoir_spi_wr(regs,base+0x309c,1);
+ 	bool ev=false, tx=false, rx=false, ok=true;
+@@ -392,8 +394,8 @@
+ 	if(rx) ok=renoir_gpi_command(regs,base,1,false,10)&&ok;
+ 	if(tx) ok=renoir_gpi_command(regs,base,0,false,10)&&ok;
+ 	if(ev) ok=renoir_gpi_command(regs,base,0,true,10)&&ok;
+-	renoir_spi_wr(regs,base+0x3098,0);
+-	renoir_spi_wr(regs,base+0x309c,0);
++	renoir_spi_wr(regs,base+0x3098,chmask);
++	renoir_spi_wr(regs,base+0x309c,evmask);
+ 	printf("RENOIR GPI ALLOC: group=%u allocate/release=%d ev=%d tx=%d rx=%d; failed commands require reboot; DMA never submitted\n",
+ 	    group,ok,ev,tx,rx);
+ }

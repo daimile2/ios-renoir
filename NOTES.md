@@ -1,3 +1,22 @@
+# ACTIVE — 0090 read; allocator withheld; 0091 fixes false-busy predicate
+
+- User confirms0090 lockscreen/time/keys normal, then manualFASTBOOT.
+  Temporary TWRP boot OKAY; normal root adb available; phone NOW TWRP.
+- Pulled ../logs/ios-gpi-alloc-0090-v1.txt (123959bytes, flush8).
+  No GPI commands sent: no pristine group. SMMU freeSMR82 first7,
+  banks60; unreferencedCB7/8/9 SCTLR M=0 but undefined TTBR/register
+  values nonzero. NoSID4d6match, noDMA, noFTS ID or touch events.
+- 0090 predicate incorrectly demanded zero from unused ring/scratch
+  registers. 0091 only accepts DT dynamic group1..6 with three state0,
+  no protocol association, scratch0=0 both channels, outputIRQmask0.
+  Logs selector inputs, polls fresh completion, restores original source
+  masks instead of assuming zero. No START/doorbell/SMMU writes/DMA.
+- 0091 local single-file build/repository validation pass; strict patch
+  series check in progress, then full CI/QEMU/phone pending.
+- Do not treat disabled/unreferenced bank or successful allocator as
+  working IOMMU/DMA. Need dedicated SID mapping and bounded transactions.
+- User30s reply-or-pause rule persists for next requested response.
+
 # ACTIVE — 0090 TEMPORARY BOOT OKAY; user reports still booting (3)
 
 - TWRP adb reboot bootloader succeeded. Sending/Booting OKAY recorded
