@@ -1,3 +1,41 @@
+# ACTIVE — 0086 CI/QEMU PASSED; phone ID+timezone boot RUNNING
+
+- CI39583704748 SUCCESS source680b5c047d9e8c97a67a6ee6af38208c40fe0252,
+  explicitly applies0086. Kernel SHA256
+  33e912126ff6d1d5ee408fb4f06aa6af39f360f34cb9b226a6c8c7fb7c4888e9.
+- Restricted-timer QEMU45s passes PID1+two heartbeats, no panic observed,
+  zero unknown glyphs. Probes/timezone mutation disabled in QEMU; this
+  does not verify hardware SPI or filesystem timezone mutation.
+- Phone image ../artifacts/xnu-renoir-0086/phone-id-timezone-v1/shim-boot.img
+  SHA0bac09f57b9eacbb85a9757f203266daf6e37e613400afd366b522576589b614.
+  Unpacked payload + stock DTB cmp pass. Args607bytes, SPI ID +Shanghai
+  enabled; keys/10Hz/RTC retained. Still NO coordinates/HID touch events.
+- Fallback same kernel ../artifacts/xnu-renoir-0086/
+  phone-timezone-fallback-v1/shim-boot.img disables active ID trial and
+  retains RTC/Shanghai fix/read-only SPI observation. Both manifests saved.
+- Phone was root TWRP; adb reboot bootloader then temporary fastboot boot
+  main image Sending/Booting OKAY; ../logs/fastboot-id-timezone-0086-v1.log.
+  No userdata reflash, no PMIC rail writes. TZ link configuration is an
+  opt-in persistent filesystem change, target old regular file refused.
+- Await user local time/date + boot stability. Then FASTBOOT/TWRP pull
+  log and inspect RENOIR SPI gate/reset/ID, RENOIR TZ error/already state.
+  ID5652 still NOT verified on XNU; do not claim touch works.
+
+# 0086 CI run39583704748 IN PROGRESS — TWRP remains online
+
+- CI source680b5c047d9e8c97a67a6ee6af38208c40fe0252.
+- Read-only TWRP evidence saved ../logs/twrp-dmesg-0086.txt: downstream
+  SPI TX/RX FIFOs16, word32; FT3658U ID5652 verified. Regulator sysfs
+  ../logs/twrp-touch-regulators-0086.txt confirms pm8350c_l2=1.8V enabled,
+  pm8350c_l7=3.3V enabled. Does NOT prove identical state after ABL/XNU.
+- Recovery debugfs paths unavailable (mount attempt failed, no files
+  changed). No raw PMIC writes, no regulator changes performed.
+- Phone still TWRP. Once CI passes: download to0086, build QEMU payload
+  with ../artifacts/xnu-renoir-0086/{qemu.adt,qemu-init.bin}, restricted
+  timer45s. Package using RENOIR_SPI_ID=1 RENOIR_SHANGHAI=1 env options,
+  then temporary boot after adb reboot bootloader. Observe local time;
+  no touch events expected in this ID-only phase. Pull log next.
+
 # ACTIVE — 0086 SPI chip ID + Shanghai timezone, ready for CI
 
 - Phone currently TWRP root; 0085 log saved ../logs/ios-rtc-spi-0085-v1.txt
