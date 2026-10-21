@@ -1,3 +1,30 @@
+# ACTIVE — 0087 touch RPMh/reset + canonical timezone ready for CI
+
+- User0086 local time stillUTC-7. Root TWRP temporarily booted, log pulled
+  ../logs/ios-id-timezone-0086-v1.txt (177642 bytes flush19).
+  TZ atomic config error0, so do NOT claim previous symlink write failed.
+  SPI fw102/proto1 but reset0, IRQ0, pins1/1/1/1, gates83c8000,
+  branch80004220, RCG80000000/100000, SEclock11. ID withheld; no transfer.
+- Apple open-source ICU putil.cpp extracts Olson ID after /zoneinfo/;
+  prior /usr/share/zoneinfo.default/Asia/Shanghai path does not match that
+  convention. Candidate cause, not yet verified in exact iOS16 binary.
+  New link /var/db/timezone/zoneinfo/Asia/Shanghai; if alias absent,
+  create zoneinfo -> /usr/share/zoneinfo.default only when target absent.
+  Validate regular Shanghai file; no overwrite of existing directory.
+  Replace link text even if old target resolves to same vnode (important).
+- 0087 retargets RPMh: DT reserved cmd-db80860000+20000, ACTIVE TCS2..4.
+  Keep strict RSCv1/v2/geometry/magic/version/uniqueVRM entry checks,
+  idle-empty slots, conflict checks, masked polling/quarantine on timeout.
+  Only exact L2C1.8V/L7C3.3V requests allowed; vendor PMIC5LDO HPM raw7
+  verified in pinned qcom-rpmh-regulator.c. Added local provenance JSON.
+- renoirpower1 under SPI ID path: reset GPIO30 low/output (retain drive),
+  IOVDD L2 first,1ms,AVDD L7,10ms,reset high,200ms bounded startup wait.
+  No direct PMIC SPMI writes. Rail requests/reset persist this boot; fail
+  leaves reset low, logs error, does not send SPI. SPI FIFO setup otherwise
+  same0086. Touch events still NOT implemented; goal is stable chip ID.
+- Three local LLVM18 objects compile0/3fail; all87 fresh patches apply,
+  repo validation passes. CI/QEMU/hardware still required. Phone TWRP.
+
 # ACTIVE — 0086 CI/QEMU PASSED; phone ID+timezone boot RUNNING
 
 - CI39583704748 SUCCESS source680b5c047d9e8c97a67a6ee6af38208c40fe0252,

@@ -1,0 +1,331 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -16,6 +16,7 @@
+ 
+ extern vm_offset_t ml_io_map(vm_offset_t, vm_size_t);
+ extern void sweet_hid_key(int key, int down);
++extern int renoir_touch_power(void);
+ void sweet_keys_init(void);
+ 
+ #define KEYS_CORE_PA     0x0c440000u
+@@ -263,6 +264,24 @@
+ 	    keys_rd(gcc, 0x17274), keys_rd(se, 0x48), keys_rd(tlmm, 30*0x1000+4),
+ 	    keys_rd(tlmm, 31*0x1000+4), keys_rd(tlmm, 20*0x1000),
+ 	    keys_rd(tlmm, 21*0x1000), keys_rd(tlmm, 22*0x1000), keys_rd(tlmm, 23*0x1000));
++	int power = 0;
++	(void)PE_parse_boot_argn("renoirpower", &power, sizeof(power));
++	if (power && !(keys_rd(se,0x40)&0x1001) && !(keys_rd(se,0x64)&1)) {
++		/* Latch reset low before enabling its GPIO output. Preserve drive. */
++		uint32_t cfg=keys_rd(tlmm,30*0x1000);
++		renoir_spi_wr(tlmm,30*0x1000+4,keys_rd(tlmm,30*0x1000+4)&~2u);
++		renoir_spi_wr(tlmm,30*0x1000,(cfg&~0x23fu)|0x200u);
++		delay(1000);
++		if (renoir_touch_power()) {
++			printf("RENOIR SPI: power failed; reset remains low, no transfer\n");
++			return;
++		}
++		delay(10000);
++		renoir_spi_wr(tlmm,30*0x1000+4,keys_rd(tlmm,30*0x1000+4)|2u);
++		delay(200000);
++		printf("RENOIR SPI: powered reset release cfg=%#x io=%#x\n",
++		    keys_rd(tlmm,30*0x1000),keys_rd(tlmm,30*0x1000+4));
++	}
+ 	if ((keys_rd(se, 0x64) & 1) || (keys_rd(se, 0x40) & 0x1001) ||
+ 	    !(keys_rd(tlmm, 30*0x1000+4) & 1)) {
+ 		printf("RENOIR SPI: ID withheld: FIFO unavailable, busy, or reset held low\n");
+--- a/bsd/dev/sweet_rpmh.c
++++ b/bsd/dev/sweet_rpmh.c
+@@ -1,5 +1,5 @@
+ /*
+- * SWEET PM6150L L11C bring-up; see report.md for DT and source evidence.
++ * Renoir PM8350C L2/L7 bring-up; see report.md for DT and source evidence.
+  * Sole XNU apps-DRV owner, called from thread context with deep idle disabled.
+  * No sleep/wake programming, SPMI writes, GIC handler, or timeout recovery.
+  */
+@@ -12,14 +12,17 @@
+ 
+ extern vm_offset_t ml_io_map(vm_offset_t, vm_size_t);
+ int sweet_rpmh_vreg_enable(const char *res, unsigned mv);
++int renoir_touch_power(void);
+ 
+ /* Live downstream DT has two positional reg entries, no reg-names. */
+ #define RH_RSC_PA       0x18220000u
+ #define RH_TCS_PA       0x18220d00u
+ #define RH_TCS_SIZE     0x3000u
+-#define RH_DICT_PA      0x0c3f000cu
++#define RH_DB_PA        0x80860000u
++#define RH_DB_SIZE      0x20000u
+ #define RH_DRV          2u
+-#define RH_ACTIVE_N     2u       /* DT order: ACTIVE 2, SLEEP 3, WAKE 3 */
++#define RH_ACTIVE_FIRST 2u
++#define RH_ACTIVE_N     3u       /* DT order: WAKE2, ACTIVE3, SLEEP3 */
+ #define RH_NORMAL_N     8u       /* hidden CONTROL TCS is not in this bank */
+ #define RH_TCS_STRIDE   0x2a0u
+ #define RH_CMD_STRIDE   0x14u
+@@ -46,7 +49,7 @@
+ #define RH_VRM          4u
+ #define RH_TIMEOUT_US   100000u
+ 
+-static vm_offset_t rh_rsc, rh_tcs, rh_dict, rh_db;
++static vm_offset_t rh_rsc, rh_tcs, rh_db;
+ static uint32_t rh_db_size;
+ static unsigned rh_ncpt;
+ static unsigned rh_lock;
+@@ -78,7 +81,7 @@
+ 		}
+ 		delay(1);
+ 	}
+-	printf("SWEET RPMH: readback timeout off=%#x want=%#x got=%#x\n",
++	printf("RENOIR RPMH: readback timeout off=%#x want=%#x got=%#x\n",
+ 	    off, value, rh_read(rh_tcs, off));
+ 	return false;
+ }
+@@ -106,11 +109,8 @@
+ 	if (!rh_tcs) {
+ 		rh_tcs = ml_io_map(RH_TCS_PA, RH_TCS_SIZE);
+ 	}
+-	if (!rh_dict) {
+-		rh_dict = ml_io_map(RH_DICT_PA, 8);
+-	}
+-	if (!rh_rsc || !rh_tcs || !rh_dict) {
+-		printf("SWEET RPMH: RSC/locator mapping failed\n");
++	if (!rh_rsc || !rh_tcs) {
++		printf("RENOIR RPMH: RSC/locator mapping failed\n");
+ 		return ENOMEM;
+ 	}
+ 	uint32_t id = rh_read(rh_rsc, 0);
+@@ -119,40 +119,30 @@
+ 	unsigned major = (id >> 16) & 0xffu;
+ 	unsigned count = (config >> (6u * RH_DRV)) & 0x3fu;
+ 	rh_ncpt = (config >> 27) & 0x1fu;
+-	printf("SWEET RPMH: rsc=%#x tcs=%#x DRV=%u id=%#x solver=%#x config=%#x TCS=%u ncpt=%u\n",
++	printf("RENOIR RPMH: rsc=%#x tcs=%#x DRV=%u id=%#x solver=%#x config=%#x TCS=%u ncpt=%u\n",
+ 	    RH_RSC_PA, RH_TCS_PA, RH_DRV, id, solver, config, count, rh_ncpt);
+ 	/* This client implements the pre-v3 layout only; do not guess v3 offsets. */
+ 	if ((major != 1 && major != 2) || config == 0xffffffffu ||
+ 	    solver == 0xffffffffu || count < RH_NORMAL_N ||
+ 	    count > RH_TCS_SIZE / RH_TCS_STRIDE || rh_ncpt < 3 || rh_ncpt > 16) {
+-		printf("SWEET RPMH: unsupported RSC geometry/revision\n");
++		printf("RENOIR RPMH: unsupported RSC geometry/revision\n");
+ 		return ENODEV;
+ 	}
+ 	if (!rh_db) {
+-		uint32_t pa = rh_read(rh_dict, 0);
+-		uint32_t size = rh_read(rh_dict, 4);
+-		printf("SWEET RPMH: cmd-db locator=%#x pa=%#x size=%#x\n", RH_DICT_PA, pa, size);
+-		/* Firmware supplies the reserved RAM address; never scan physical RAM. */
+-		if (pa < 0x80000000u || (pa & 3u) || (size & 3u) ||
+-		    size < RH_DB_HEADER || size > RH_DB_MAX ||
+-		    (uint64_t)pa + size > 0x100000000ULL) {
+-			printf("SWEET RPMH: invalid cmd-db locator\n");
+-			return EINVAL;
+-		}
+-		rh_db = ml_io_map(pa, size);
+-		if (!rh_db) {
+-			return ENOMEM;
+-		}
+-		rh_db_size = size;
+-	}
++		/* Exact live-DT reserved cmd-db region; never scan physical RAM. */
++		rh_db = ml_io_map(RH_DB_PA, RH_DB_SIZE);
++		if (!rh_db) return ENOMEM;
++		rh_db_size = RH_DB_SIZE;
++	}
++
+ 	uint32_t db_version = rh_read(rh_db, 0);
+ 	uint32_t magic = rh_read(rh_db, 4);
+ 	uint32_t flags = rh_read(rh_db, 140);
+-	printf("SWEET RPMH: cmd-db version=%#x magic=%#x checksum=%#x flags=%#x\n",
++	printf("RENOIR RPMH: cmd-db version=%#x magic=%#x checksum=%#x flags=%#x\n",
+ 	    db_version, magic, rh_read(rh_db, 136), flags);
+ 	/* Linux only checks magic; version 1 is an intentionally stricter policy. */
+ 	if (magic != RH_DB_MAGIC || db_version != 1 || (flags & 1u)) {
+-		printf("SWEET RPMH: unsupported/standalone cmd-db\n");
++		printf("RENOIR RPMH: unsupported/standalone cmd-db\n");
+ 		return EINVAL;
+ 	}
+ 	return 0;
+@@ -177,7 +167,7 @@
+ 		unsigned count = rh_db16(h + 6);
+ 		if (slave < 3 || slave > 5 || (entries & 3u) ||
+ 		    !rh_range(entries, count * RH_DB_ENTRY) || !rh_range(aux, 0)) {
+-			printf("SWEET RPMH: malformed cmd-db slave header %u\n", i);
++			printf("RENOIR RPMH: malformed cmd-db slave header %u\n", i);
+ 			return EINVAL;
+ 		}
+ 		for (unsigned j = 0; j < count; ++j) {
+@@ -188,18 +178,18 @@
+ 			uint32_t addr = rh_read(rh_db, e + 16);
+ 			if (slave != RH_VRM || (addr >> 16) != RH_VRM || (addr & 15u) ||
+ 			    !rh_range(aux + rh_db16(e + 22), rh_db16(e + 20))) {
+-				printf("SWEET RPMH: invalid VRM entry for %s\n", res);
++				printf("RENOIR RPMH: invalid VRM entry for %s\n", res);
+ 				return EINVAL;
+ 			}
+ 			*address = addr;
+ 			++matches;
+-			printf("SWEET RPMH: %s addr=%#x slave=%u aux-version=%#x priority=%#x:%#x\n",
++			printf("RENOIR RPMH: %s addr=%#x slave=%u aux-version=%#x priority=%#x:%#x\n",
+ 			    res, addr, slave, rh_db16(h + 8),
+ 			    rh_read(rh_db, e + 8), rh_read(rh_db, e + 12));
+ 		}
+ 	}
+ 	if (matches != 1) {
+-		printf("SWEET RPMH: %s lookup matches=%u; refusing\n", res, matches);
++		printf("RENOIR RPMH: %s lookup matches=%u; refusing\n", res, matches);
+ 		return ENODEV;
+ 	}
+ 	return 0;
+@@ -222,10 +212,10 @@
+ rh_send(uint32_t address, unsigned mv)
+ {
+ 	int chosen = -1;
+-	for (unsigned t = 0; t < RH_ACTIVE_N; ++t) {
++	for (unsigned t = RH_ACTIVE_FIRST; t < RH_ACTIVE_FIRST + RH_ACTIVE_N; ++t) {
+ 		uint32_t b = t * RH_TCS_STRIDE;
+ 		uint32_t enabled = rh_read(rh_tcs, b + RH_ENABLE);
+-		printf("SWEET RPMH: ACTIVE TCS%u idle=%#x control=%#x enable=%#x wait=%#x\n",
++		printf("RENOIR RPMH: ACTIVE TCS%u idle=%#x control=%#x enable=%#x wait=%#x\n",
+ 		    t, rh_read(rh_tcs, b + RH_STATUS), rh_read(rh_tcs, b + RH_CONTROL),
+ 		    enabled, rh_read(rh_tcs, b + RH_WAIT));
+ 		if (enabled & ~((1u << rh_ncpt) - 1u)) {
+@@ -234,7 +224,7 @@
+ 		for (unsigned c = 0; c < rh_ncpt; ++c) {
+ 			if ((enabled & (1u << c)) &&
+ 			    (rh_read(rh_tcs, b + RH_ADDR + c * RH_CMD_STRIDE) & ~15u) == address) {
+-				printf("SWEET RPMH: conflicting inherited L11C request in TCS%u\n", t);
++				printf("RENOIR RPMH: conflicting inherited target request in TCS%u\n", t);
+ 				return EBUSY;
+ 			}
+ 		}
+@@ -243,7 +233,7 @@
+ 		}
+ 	}
+ 	if (chosen < 0) {
+-		printf("SWEET RPMH: no empty idle ACTIVE TCS; leaving inherited state intact\n");
++		printf("RENOIR RPMH: no empty idle ACTIVE TCS; leaving inherited state intact\n");
+ 		return EBUSY;
+ 	}
+ 	unsigned t = (unsigned)chosen;
+@@ -269,7 +259,7 @@
+ 	/* HPM (raw 7) is supported by this PMIC5 LDO; enable comes last. */
+ 	const uint32_t offsets[3] = {0, 8, 4};
+ 	const uint32_t values[3] = {mv, 7, 1};
+-	printf("SWEET RPMH: TCS%u ACTIVE %u mV mode=7 enable=1 irq-enable=%#x\n", t, mv, irq_en);
++	printf("RENOIR RPMH: TCS%u ACTIVE %u mV mode=7 enable=1 irq-enable=%#x\n", t, mv, irq_en);
+ 	for (unsigned c = 0; c < 3; ++c) {
+ 		uint32_t cmd = b + c * RH_CMD_STRIDE;
+ 		if (!rh_sync(cmd + RH_MSGID, RH_WRITE_ACK) ||
+@@ -303,10 +293,10 @@
+ 		}
+ 		delay(1);
+ 	}
+-	printf("SWEET RPMH: TCS%u done=%d irq=%#x idle=%#x control=%#x cmd-status=%#x/%#x/%#x\n",
++	printf("RENOIR RPMH: TCS%u done=%d irq=%#x idle=%#x control=%#x cmd-status=%#x/%#x/%#x\n",
+ 	    t, done, irq, idle, rh_read(rh_tcs, b + RH_CONTROL), status[0], status[1], status[2]);
+ 	if (!done) {
+-		printf("SWEET RPMH: timeout; TCS quarantined, IRQ remains masked; no reset/retry\n");
++		printf("RENOIR RPMH: timeout; TCS quarantined, IRQ remains masked; no reset/retry\n");
+ 		return ETIMEDOUT;
+ 	}
+ 	/* Proven completion: clear trigger before mode, then free only our commands. */
+@@ -320,7 +310,7 @@
+ 		return EIO;
+ 	}
+ 	rh_poisoned = false;
+-	printf("SWEET RPMH: L11C ACTIVE vote complete (rail voltage requires hardware verification)\n");
++	printf("RENOIR RPMH: LDO ACTIVE vote complete (rail voltage requires hardware verification)\n");
+ 	return 0;
+ }
+ 
+@@ -328,8 +318,9 @@
+ sweet_rpmh_vreg_enable(const char *res, unsigned mv)
+ {
+ 	/* Board-specific helper: do not apply PMIC5-LDO policy to arbitrary resources. */
+-	if (!res || strcmp(res, "ldoc11") || mv < 2950 || mv > 3400) {
+-		printf("SWEET RPMH: expected ldoc11 and 2950..3400 mV\n");
++	if (!res || !((!strcmp(res, "ldoc2") && mv == 1800) ||
++	    (!strcmp(res, "ldoc7") && mv == 3300))) {
++		printf("RENOIR RPMH: expected ldoc2/1800mV or ldoc7/3300mV\n");
+ 		return EINVAL;
+ 	}
+ 	if (__atomic_exchange_n(&rh_lock, 1, __ATOMIC_ACQUIRE)) {
+@@ -338,7 +329,7 @@
+ 	int error = EIO;
+ 	uint32_t address = 0;
+ 	if (rh_poisoned) {
+-		printf("SWEET RPMH: previous uncertain transaction; refusing further access\n");
++		printf("RENOIR RPMH: previous uncertain transaction; refusing further access\n");
+ 		goto out;
+ 	}
+ 	error = rh_map();
+@@ -350,9 +341,29 @@
+ 	}
+ out:
+ 	if (error) {
+-		printf("SWEET RPMH: enable failed errno=%d\n", error);
++		printf("RENOIR RPMH: enable failed errno=%d\n", error);
+ 	}
+ 	__atomic_store_n(&rh_lock, 0, __ATOMIC_RELEASE);
+ 	return error;
+ }
++
++/* Vendor power ordering: IOVDD first, 1ms, then AVDD; caller holds reset low. */
++int
++renoir_touch_power(void)
++{
++	if (__atomic_exchange_n(&rh_lock, 1, __ATOMIC_ACQUIRE)) return EBUSY;
++	int error = EIO;
++	uint32_t iovdd = 0, avdd = 0;
++	if (rh_poisoned) goto done;
++	error = rh_map();
++	if (!error) error = rh_lookup("ldoc2", &iovdd);
++	if (!error) error = rh_lookup("ldoc7", &avdd);
++	if (!error && iovdd == avdd) error = EINVAL;
++	if (!error) error = rh_send(iovdd, 1800);
++	if (!error) { delay(1000); error = rh_send(avdd, 3300); }
++done:
++	printf("RENOIR RPMH: touch power request errno=%d; not a voltage measurement\n", error);
++	__atomic_store_n(&rh_lock, 0, __ATOMIC_RELEASE);
++	return error;
++}
+ #endif /* ARM64_BOARD_CONFIG_SWEET */
+--- a/bsd/vfs/vfs_syscalls.c
++++ b/bsd/vfs/vfs_syscalls.c
+@@ -9684,19 +9684,19 @@
+ 	int enabled = 0;
+ 	if (!PE_parse_boot_argn("renoirshanghai", &enabled, sizeof(enabled)) || !enabled) return;
+ 	vfs_context_t ctx = vfs_context_current();
+-	const char *target = "/usr/share/zoneinfo.default/Asia/Shanghai";
++	/* ICU recognizes the Olson name after /zoneinfo/, not /zoneinfo.default/. */
++	const char *target = "/var/db/timezone/zoneinfo/Asia/Shanghai";
+ 	const char *link = "/private/var/db/timezone/localtime";
+ 	const char *temporary = "/private/var/db/timezone/.renoir-localtime";
+ 	vnode_t zone = NULLVP, old = NULLVP;
+ 	int error = vnode_lookup(target, 0, &zone, ctx);
+-	if (error) { printf("RENOIR TZ: Shanghai zone missing error=%d\n",error); return; }
++	if (error == ENOENT) {
++		error = symlinkat_internal(ctx,(user_addr_t)"/usr/share/zoneinfo.default",AT_FDCWD,
++		    (user_addr_t)"/private/var/db/timezone/zoneinfo",UIO_SYSSPACE);
++		if (!error || error == EEXIST) error = vnode_lookup(target,0,&zone,ctx);
++	}
++	if (error) { printf("RENOIR TZ: canonical Shanghai zone missing error=%d\n",error); return; }
+ 	if (vnode_vtype(zone) != VREG) { vnode_put(zone); return; }
+-	error = vnode_lookup(link, 0, &old, ctx);
+-	if (!error) {
+-		bool same = old == zone;
+-		vnode_put(old);
+-		if (same) { vnode_put(zone); printf("RENOIR TZ: already Asia/Shanghai\n"); return; }
+-	}
+ 	vnode_put(zone);
+ 	/* Refuse to replace any regular file or directory at this config path. */
+ 	error = vnode_lookup(link, VNODE_LOOKUP_NOFOLLOW, &old, ctx);
+@@ -9704,6 +9704,8 @@
+ 	bool symlink_only = vnode_vtype(old) == VLNK;
+ 	vnode_put(old);
+ 	if (!symlink_only) { printf("RENOIR TZ: localtime is not a symlink; unchanged\n"); return; }
++	/* The old link may resolve to the same vnode but have the wrong name.
++	 * Always replace its text with the canonical Olson-name path. */
+ 	error = symlinkat_internal(ctx,(user_addr_t)target,AT_FDCWD,
+ 	    (user_addr_t)temporary,UIO_SYSSPACE);
+ 	if (!error) error = renameat_internal(ctx,AT_FDCWD,(user_addr_t)temporary,
