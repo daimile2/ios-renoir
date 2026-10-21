@@ -1,3 +1,12 @@
+# ACTIVE — 0093 TEMPORARY BOOT OKAY; user3 still booting
+
+- TWRP rebootbootloader + Sending/Booting OKAY, no partitionflash.
+  ../logs/fastboot-gpi-dma-0093-v1.log. Phone RUNNING0093 candidate.
+- User3 reports still booting; waiting startup, no further device action.
+  No SMMU mapping/NOP DMA result known until persistent log read.
+- Next screen feedback then manualFASTBOOT/TWRP read if appropriate.
+  User30s reply-or-pause rule persists for next requested feedback.
+
 # ACTIVE — 0093 CI/QEMU PASS; preparing isolated DMA temporaryboot
 
 - Source2409d6a47928a723077a77074fdfa5c85518a674 CI39635864693 SUCCESS,
