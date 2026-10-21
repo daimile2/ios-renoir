@@ -1,3 +1,19 @@
+# ACTIVE — 0090 CI/QEMU PASS; preparing temporary phone boot
+
+- Kernel source fe205c2e1a122ff789e490749ccb7972571a5d53; CI39627973139
+  SUCCESS, log explicitly applies0090. Kernel SHA256
+  606366567b8a940898e900a7cc40187c145cecc544f6f84103f178dd7bd90e75.
+- 90 patches strict-apply, local object, repository validation pass.
+  Restricted-timer QEMU45s PID1+two heartbeats, no panic/unknown glyphs.
+  Hardware allocator/SMMU paths disabled in QEMU; not HW validation.
+- Main ../artifacts/xnu-renoir-0090/phone-gpi-alloc-v1/shim-boot.img
+  SHA256 2d60d18d73c5986f04e5c58281747206e6a6030487ecb36b707bdd1f502db528.
+  args577bytes includingNUL; unpack payload/stockDTB cmp pass. Adds
+  renoirgpialloc1, retains0088 time/keys10Hz/power. NoDMA/SMMU writes.
+- Phone observed TWRP; next adb reboot bootloader then fastboot boot.
+  No0090 phone results yet. Preserve0088 fallback, no root reflash.
+- After boot ask numbered observations; 30s no reply => pause all work.
+
 # ACTIVE — resumed; 0089 logs read, 0090 command-only allocator prepared
 
 - User resumed with1 then explicit continue. Phone observed root TWRP adb.
