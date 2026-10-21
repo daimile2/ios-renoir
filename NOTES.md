@@ -1,3 +1,18 @@
+# RTC USER OBSERVATION — date correct, 03:10 vs host18:10
+
+- User0085 observation: Oct21 correct, lockscreen03:10, host18:10.
+  Delta15h exactly matches US/Pacific daylight (UTC-7) vs Shanghai UTC+8.
+- Verified original mounted Apple OS /private/var/db/timezone/localtime
+  symlink -> /var/db/timezone/zoneinfo/US/Pacific. Actual writable phone
+  symlink not read back yet; inherited image default is strong evidence.
+  Do NOT add15h to RTC calibration or hardcode calendar time in kernel.
+- Next pair should retain touch progress + timezone configuration repair
+  to Asia/Shanghai. Must verify target zoneinfo exists on actual root;
+  host offline initial raw image changes alone do not update running phone.
+  TWRP lacks HFS+ mount support; do not format or reflash root for this.
+- Need user manual FASTBOOT then temporary TWRP to pull0085 persistent log
+  and inspect RENOIR RTC + RENOIR SPI. Phone currently running0085 iOS.
+
 # ACTIVE — 0085 CI/QEMU PASSED, temporary phone boot RUNNING
 
 - CI39581236086 SUCCESS, source a14c44346d1253ec601654f049bb9ae8a6c26d00.
