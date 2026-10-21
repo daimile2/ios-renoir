@@ -1,3 +1,13 @@
+# ACTIVE — 0090 TEMPORARY BOOT OKAY; user reports still booting (3)
+
+- TWRP adb reboot bootloader succeeded. Sending/Booting OKAY recorded
+  ../logs/fastboot-gpi-alloc-0090-v1.log. No partition flash.
+- User reply3 (still booting) arrived immediately after30s pause message;
+  treat as resumed feedback. Await lockscreen, no device action needed.
+- No GPI allocator/SMMU bank results yet. Do not infer hardware success
+  from fastboot boot or QEMU. Read persistent log after later FASTBOOT.
+- User30s reply-or-pause rule persists for next requested response.
+
 # ACTIVE — 0090 CI/QEMU PASS; preparing temporary phone boot
 
 - Kernel source fe205c2e1a122ff789e490749ccb7972571a5d53; CI39627973139
