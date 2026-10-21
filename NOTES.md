@@ -1,3 +1,41 @@
+# ACTIVE — 0085 CI/QEMU PASSED, temporary phone boot RUNNING
+
+- CI39581236086 SUCCESS, source a14c44346d1253ec601654f049bb9ae8a6c26d00.
+  CI log explicitly applies0085; downloaded kernel SHA256
+  458430cfce28636325697d41deee2e4dfedae9d185a13200c134432db3ef97d4.
+- Restricted physical-timer QEMU45s: test PID1 + two heartbeats,
+  no panic observed, zero unknown glyphs, no EL2 trap reported. Probes
+  disabled in QEMU: cannot verify real RTC or SPI there.
+  Payload rebuilt with0085 kernel and verified Mach-O test init extracted
+  from0084 payload last RAMDisk segment (11th), not reused old kernel.
+- ../tools/build-rtc-spi.sh assembled ../artifacts/xnu-renoir-0085/
+  phone-rtc-spi-v1/shim-boot.img; payload + stock DTB unpack match.
+  Image SHA ec03cb0e90e563377f9b1ade3ef42c5cf55faaf0accff9935fc8c1da54a1fda1.
+  Features: renoirrtc1/private rtc_offset_ms, renoirspiprobe1; keys1,
+  10Hz, cpus1. SPI status only, NO touch events. No root reflash.
+- From verified TWRP root, adb reboot bootloader and temporary fastboot
+  boot Sending/Booting OKAY; ../logs/fastboot-rtc-spi-0085-v1.log.
+  Await lockscreen time/date observation, retain0084 fallback. UTC vs
+  configured local timezone may differ; ask date and hour separately.
+- After user observation/FASTBOOT, pull log using temporary TWRP;
+  inspect RENOIR RTC calibrated sample and RENOIR SPI fw/protocol/status
+  before clock/GPIO/RPMh writes or real SPI transfers.
+
+# 0085 CI IN PROGRESS — phone currently TWRP, logs saved
+
+- CI run39581236086 on a14c44346d1253ec601654f049bb9ae8a6c26d00.
+- User says currently TWRP; verified root recovery adb. Pulled current
+  10Hz log ../logs/ios-keys-10hz-v2.txt (729543 bytes, flush2190).
+  No key read errors, no panic(cpu. Volume press/releases paired; last
+  power release may be outside final flush. HID clients receive events.
+- Read-only recovery rtc0 since_epoch + persist calibration compared
+  host UTC: ~1 second difference. Evidence private JSON under
+  ../artifacts/time-reference/recovery-calibration-check.json.
+  Thus calibrated-time input validated before testing new kernel.
+- Do not reflash root. Wait CI -> download -> QEMU restricted timer ->
+  tools/build-rtc-spi.sh -> temporary boot. Phone TWRP adb can reboot to
+  bootloader when ready. New SPI probe does not implement touch events.
+
 # ACTIVE — 0085 RTC calibration + read-only GENI SPI observation
 
 - User requests two targets per image: two drivers or driver+bug fix.
