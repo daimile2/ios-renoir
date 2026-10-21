@@ -1,3 +1,20 @@
+# ACTIVE — 0094 CI/QEMU PASS; preparing temporaryphone boundsfix test
+
+- Source857dfc499eaab69a8512d285c56552f4de8d3831 CI39638560711 SUCCESS,
+  explicit0094 apply. Kernel SHA256
+  e466fc0db1222abe4f7383fdf4ae69dd502eb3dd24eef5c4ad99fd0a7f956433.
+- Localobject/repository/94patch strictapply pass. QEMU45s PID1+two
+  heartbeats, zero unknown glyphs, no panic observed. Hardware disabled.
+- MAIN ../artifacts/xnu-renoir-0094/phone-gpi-dma-v1/shim-boot.img SHA
+  d057ec3d8ffea102cf7f090164c8855f6bda3d28870717730f1b3106da85e1e3.
+  args592bytes inclNUL, unpack payload/stockDTB cmp pass.
+- Samekernel noDMA phone-gpi-alloc-fallback-v1/shim-boot.img SHA
+  b11441def955407b2efd1527384b9af1a11c16de3f0ba6cd2fb056d0760e579d.
+  args577bytes. shim/out currently holds fallback; boot archived MAIN.
+- Phone rootTWRP; next adb rebootbootloader + temporaryboot0094. No
+  actual0094 phone/DMA result yet. No SPI command/touch events.
+- User30s reply-or-pause rule persists for next numbered feedback.
+
 # ACTIVE — 0093 panic symbolicated; 0094 bounds fix prepared; phone TWRP
 
 - User2 reported panic and latestphoto ../IMG_2726.jpeg, then confirmed
