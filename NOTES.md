@@ -1,3 +1,13 @@
+# ACTIVE — 0097 local checks PASS; CI39646826799 running; phone rootTWRP
+
+- Hardware sourcec565ffad251999c81ab95d7e41187d03d4d53dad.
+- Local sweet_keys object compile PASS, repository validation PASS,
+  all97 patches strictapply PASS. QEMU skipped by explicit user.
+- Build flagRENOIR_GPI_LOCK=1 requiresDMA, adds gpilock=1 (total601bytes
+  expected inclNUL; build script enforces actual608byte bound).
+- Next wait fullCI, download/hash, buildmain+samekernelnoLOCK fallback,
+  temporarybootmain. NoSPIpayload/pinmux changes. Phone rootTWRP.
+
 # ACTIVE — 0096 DMA NOP VERIFIED; 0097 standalone LOCK/UNLOCK in development
 
 - Recovery ADB resumed after user confirmedTWRP home. RootADB works.
