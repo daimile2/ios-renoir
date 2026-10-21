@@ -1,3 +1,10 @@
+# ACTIVE — 0094 TEMPORARY BOOT OKAY; waiting startup before feedback
+
+- TWRP rebootbootloader + Sending/Booting OKAY, no partitionflash.
+  ../logs/fastboot-gpi-dma-0094-v1.log. Phone RUNNING0094 candidate.
+- No actual boundsfix/SMMU/NOP result known; must inspect screen then
+  persistent log. User30s reply-or-pause rule applies after question.
+
 # ACTIVE — 0094 CI/QEMU PASS; preparing temporaryphone boundsfix test
 
 - Source857dfc499eaab69a8512d285c56552f4de8d3831 CI39638560711 SUCCESS,
