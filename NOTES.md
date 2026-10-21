@@ -1,3 +1,26 @@
+# ACTIVE — 0087 CI/QEMU PASSED, temporary phone boot RUNNING
+
+- CI39585998521 SUCCESS, source8cd4c546c126a7456dc64547a6663bfc5af9b503.
+  Explicit0087 apply in ../logs/ci-renoir-39585998521.log. Kernel SHA256
+  98666fdd350779fd827f428962c490aa60f37e67d2942a55bbdb8b20de651de3.
+- New main image ../artifacts/xnu-renoir-0087/phone-power-timezone-v1/
+  shim-boot.img SHA16456500119985c1af883df397afa44b616135387ea79c93ad51e4a567a6c1a7.
+  Unpacked payload/stock DTB cmp pass; args542bytes. SPI ID +power +Shanghai
+  enabled, old process sampler disabled solely to free args. Keep keys,
+  RTC, 10Hz, cpus1 and persistent log. Still NO HID touch events.
+- Fallback same kernel phone-timezone-fallback-v1 image disables ID/power
+  trial and keeps canonical timezone repair + RTC/read-only SPI status.
+  Both manifests include actual kernel CI and commit.
+- QEMU restricted-timer45s PASSED new kernel/mockfs test init: PID1+two
+  heartbeats, zero unknown glyphs, no panic observed. Hardware flags off.
+- From root TWRP, adb reboot bootloader -> temporary main boot Sending/
+  Booting OKAY; ../logs/fastboot-power-timezone-0087-v1.log. Phone now
+  running0087; await local time/stability, do not reboot before observation.
+  Then FASTBOOT/TWRP collect log: RENOIR RPMH geometry,
+  cmd-db/ldoc2/ldoc7, RENOIR SPI reset/ID, RENOIR TZ canonical config.
+  Current last tested0086 had time stillUTC-7 and reset held low/no SPI
+  requests; do not misreport either feature as complete.
+
 # ACTIVE — 0087 touch RPMh/reset + canonical timezone ready for CI
 
 - User0086 local time stillUTC-7. Root TWRP temporarily booted, log pulled
