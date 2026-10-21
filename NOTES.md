@@ -1,3 +1,17 @@
+# ACTIVE — 2026-10-22 0092 CI/QEMU PASS; preparing temporary phone boot
+
+- Sourceaa579ec3df2c6c400a734d81fbf755ccb07d4fb3 CI39632582652 SUCCESS;
+  explicit0092 patch apply. Kernel SHA256
+  e96b2aa351e31eb73f2d80aa68c0be9f882404fbb4bc79393b867089d8b7c89e.
+- Localobject/repository/92patch strictapply pass. QEMU45s PID1+two
+  heartbeats, no panic observed. Hardware paths disabled, not HW proof.
+- Main ../artifacts/xnu-renoir-0092/phone-gpi-alloc-v1/shim-boot.img
+  SHA256 b988b6dfd40579f64a5f7c4da00a27ca38e5adfb4dc9bf7600aa3a62383cf161.
+  args577bytes inclNUL; stockDTB/payload unpack-cmp pass.
+- Phone rootTWRP; next adb reboot bootloader + temporaryboot0092.
+  No phone0092 results yet. No START/doorbell/SMMU writes/DMA/touch.
+- User30s reply-or-pause rule applies to next numbered screen question.
+
 # ACTIVE — 2026-10-22 0091 read; output-mask predicate fixed in0092
 
 - User confirms0091 lockscreen/time/keys normal. ManualFASTBOOT then
