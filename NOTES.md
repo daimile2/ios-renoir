@@ -1,3 +1,17 @@
+# ACTIVE — 0096 DMA NOP VERIFIED; 0097 standalone LOCK/UNLOCK in development
+
+- Recovery ADB resumed after user confirmedTWRP home. RootADB works.
+- ../logs/ios-gpi-dma-0096-v1.txt:122289bytes flush11.
+  NOP success1 wait100us EVRP100010 event00101000/0/04000000/00220000,
+  guard1 FSR400 faults0 format2 GPIglobal0 GFSR0. Both RESET and all
+  reverse DEALLOC fresh completions pass. Actual SMMU DMA now verified.
+- Phone remains rootTWRP, no partition writes. User GUI/time/keys normal.
+- 0097 next: opt-in gpilock=1, sequential NOP/LOCK/UNLOCK IEOB descriptors,
+  separate doorbells only after validated predecessor; validate each event
+  pointer/code/type/guard/faults. No SPI payload/pinmux yet. Failure stops
+  sequence and requires reboot (SE lock ownership may be uncertain).
+- QEMU skipped per user; localcompile/strictpatch/repo/fullCI required.
+
 # ACTIVE — 0096 screen normal; log retrieval paused awaiting recovery status
 
 - User confirmed0096 lockscreen/time/keys normal, then FASTBOOT ready.
