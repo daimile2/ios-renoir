@@ -1,3 +1,12 @@
+# ACTIVE — 0091 TEMPORARY BOOT OKAY; screen/log results pending
+
+- TWRP adb reboot bootloader succeeded, then Sending/Booting OKAY in
+  ../logs/fastboot-gpi-alloc-0091-v1.log. Phone RUNNING0091 candidate.
+- Wait normal startup then numbered screen question. If no reply30s,
+  pause all device progression and save checkpoint per user request.
+- GPI allocate/release success NOT known; must read persistent log.
+  NoDMA/FTS ID/touch events implemented. 0088 fallback remains available.
+
 # ACTIVE — 2026-10-22 0091 CI/QEMU PASS; preparing temporary boot
 
 - Source50be970937cfc9d0d9b5c5840f234a1e825459cd CI39630379114 SUCCESS;
