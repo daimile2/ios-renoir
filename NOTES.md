@@ -1,3 +1,28 @@
+# ACTIVE — 0086 SPI chip ID + Shanghai timezone, ready for CI
+
+- Phone currently TWRP root; 0085 log saved ../logs/ios-rtc-spi-0085-v1.txt
+  158879bytes flush29. RTC calibrated sample epoch1792577250 APID65.
+  SPI fw0x102 protocol1 status0 clk1 TX/RX0 HW20102864/20104800.
+  This verifies SPI firmware present/idle, NOT chip ID or touch.
+- 0086 adds opt-in renoirspiid1 under renoirspiprobe1: log clock gates,
+  root RCG, pinmux/reset/IRQ. Refuse if busy/no FIFO/reset low. Temporary
+  SE FIFO mode0 setup, SPI GPIO20..23 mux1, wrapper/S2 votes. Keep root
+  RCG, PMIC rails and reset unchanged. Divider128; 10-byte CRC-checked
+  FTS reads A3/9F, expect5652. Bounded20ms transfer +1ms abort. Restore
+  saved SE/pins/votes when idle; if abort remains busy retain and log.
+  No coordinates/HID events yet; success still needs actual hardware.
+- renoirshanghai1: before launchd, verify regular zone file at
+  /usr/share/zoneinfo.default/Asia/Shanghai, only replace symlink at
+  /private/var/db/timezone/localtime. Create temporary symlink then
+  atomic rename via existing VFS syscall helpers in kernel address space.
+  Already-correct pointer skips. Refuse regular file/directory. No RTC
+  change, no root reflash. Config change persists across later boots.
+- Three LLVM18 local objects (keys,vfs_syscalls,bsd_init) compile0/3fail;
+  all86 fresh patches and repo validation pass. Full CI and QEMU pending.
+- Root tools/build-rtc-spi.sh new env options RENOIR_SPI_ID=1 and
+  RENOIR_SHANGHAI=1 require0086+. Cmdline with both is607 bytes (<608),
+  do not add more args without removing old diagnostics first.
+
 # RTC USER OBSERVATION — date correct, 03:10 vs host18:10
 
 - User0085 observation: Oct21 correct, lockscreen03:10, host18:10.

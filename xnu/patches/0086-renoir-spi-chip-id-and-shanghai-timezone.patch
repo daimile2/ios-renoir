@@ -1,0 +1,213 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -1,8 +1,9 @@
+ /*
+  * Polled renoir PMK8350/PM8350 keys (SPMI v5 observer reads). Call once after the scheduler is running.
+  * Live DT: PON HLOS SID0 base0x1300; volume-up PM8350 SID1 GPIO6 base0x8d00.
+- * PMIC access is READ ONLY: the sole MMIO write issues EXT_READL on an
+- * observer channel. No PMIC config, IRQ acknowledge or reset writes exist.
++ * PMIC access is READ ONLY via observer EXT_READL commands.
++ * The optional SPI ID probe has separate, temporary controller writes.
++ * No PMIC config, PMIC IRQ acknowledge or PMIC reset writes exist.
+  */
+ #if defined(ARM64_BOARD_CONFIG_SWEET)
+ #include <sys/param.h>
+@@ -183,6 +184,130 @@
+ 	return 1;
+ }
+ 
++static void
++renoir_spi_wr(vm_offset_t se, uint32_t off, uint32_t value)
++{
++	*(volatile uint32_t *)(se + off) = value;
++	__asm__ volatile("dsb osh" ::: "memory");
++}
++
++/* Single small full-duplex FIFO request. No DMA, no unbounded waits. */
++static bool
++renoir_spi_xfer(vm_offset_t se, const uint8_t *tx, uint8_t *rx, unsigned len)
++{
++	if (!len || len > 16 || (keys_rd(se, 0x40) & 1)) return false;
++	renoir_spi_wr(se, 0x618, 0xffffffff);
++	renoir_spi_wr(se, 0x26c, len);
++	renoir_spi_wr(se, 0x270, len);
++	renoir_spi_wr(se, 0x600, 3u << 27);
++	for (unsigned n = 0; n < len; n += 4) {
++		uint32_t word = 0;
++		for (unsigned b = 0; b < 4 && n + b < len; ++b)
++			word |= (uint32_t)tx[n + b] << (b * 8);
++		renoir_spi_wr(se, 0x700, word);
++	}
++	unsigned got = 0;
++	for (unsigned us = 0; us < 20000; ++us) {
++		uint32_t words = keys_rd(se, 0x804) & 0x1ffffff;
++		if (words > 16) break;
++		while (words--) {
++			uint32_t word = keys_rd(se, 0x780);
++			for (unsigned b = 0; b < 4 && got < len; ++b)
++				rx[got++] = (uint8_t)(word >> (8 * b));
++		}
++		uint32_t irq = keys_rd(se, 0x610);
++		if (irq & 0x3300000eu) break;
++		if (irq & 1u) {
++			renoir_spi_wr(se, 0x618, irq);
++			return got == len && !(keys_rd(se, 0x40) & 1);
++		}
++		delay(1);
++	}
++	printf("RENOIR SPI: transfer failed got=%u irq=%#x state=%#x\n",
++	    got, keys_rd(se, 0x610), keys_rd(se, 0x40));
++	/* Abort only our command; never leave an unbounded busy loop. */
++	renoir_spi_wr(se, 0x604, 2);
++	for (unsigned i = 0; i < 1000 && (keys_rd(se, 0x40) & 1); ++i) delay(1);
++	return false;
++}
++
++static bool
++renoir_fts_reg(vm_offset_t se, uint8_t reg, uint8_t *value)
++{
++	uint8_t tx[10] = {reg, 0xa0, 0, 1, 0, 0, 0, 0, 0, 0}, rx[10] = {0};
++	for (unsigned attempt = 0; attempt < 3; ++attempt) {
++		delay(150);
++		if (!renoir_spi_xfer(se, tx, rx, sizeof(tx))) return false;
++		uint16_t crc = 0xffff;
++		crc ^= rx[7];
++		for (unsigned bit = 0; bit < 8; ++bit)
++			crc = (crc & 1) ? (crc >> 1) ^ 0x8408 : crc >> 1;
++		if (!(rx[3] & 0xa0) && crc == (uint16_t)(rx[8] | (rx[9] << 8))) {
++			*value = rx[7];
++			return true;
++		}
++		printf("RENOIR SPI: FTS reg=%#x status=%#x data=%#x crc-valid=%d\n",
++		    reg, rx[3], rx[7], crc == (uint16_t)(rx[8] | (rx[9] << 8)));
++	}
++	return false;
++}
++
++static void
++renoir_spi_id(vm_offset_t se)
++{
++	vm_offset_t tlmm = ml_io_map(0x0f100000u, 0x20000);
++	vm_offset_t gcc = ml_io_map(0x00100000u, 0x53000);
++	if (!tlmm || !gcc) return;
++	printf("RENOIR SPI: gates=%#x branch=%#x rcg=%#x/%#x clkcfg=%#x reset=%#x irq=%#x pins=%#x/%#x/%#x/%#x\n",
++	    keys_rd(gcc, 0x52008), keys_rd(gcc, 0x1726c), keys_rd(gcc, 0x17270),
++	    keys_rd(gcc, 0x17274), keys_rd(se, 0x48), keys_rd(tlmm, 30*0x1000+4),
++	    keys_rd(tlmm, 31*0x1000+4), keys_rd(tlmm, 20*0x1000),
++	    keys_rd(tlmm, 21*0x1000), keys_rd(tlmm, 22*0x1000), keys_rd(tlmm, 23*0x1000));
++	if ((keys_rd(se, 0x64) & 1) || (keys_rd(se, 0x40) & 0x1001) ||
++	    !(keys_rd(tlmm, 30*0x1000+4) & 1)) {
++		printf("RENOIR SPI: ID withheld: FIFO unavailable, busy, or reset held low\n");
++		return;
++	}
++	/* Temporary local SE setup. Preserve root clock, rails and reset. */
++	const uint32_t offsets[] = {0x20,0x24,0x28,0x48,0x7c,0x224,0x22c,0x230,
++	    0x24c,0x250,0x254,0x258,0x25c,0x260,0x264,0x268,0x26c,0x270,
++	    0x274,0x278,0x284,0x288,0x614,0xe18,0xe1c,0xe30};
++	uint32_t saved[sizeof(offsets)/sizeof(offsets[0])], pins[4];
++	for (unsigned i=0; i<sizeof(saved)/sizeof(saved[0]); ++i) saved[i]=keys_rd(se,offsets[i]);
++	uint32_t vote=keys_rd(gcc,0x52008);
++	renoir_spi_wr(gcc,0x52008,vote | (1u<<12) | (1u<<6) | (1u<<7));
++	for (unsigned i=0;i<4;++i) {
++		pins[i]=keys_rd(tlmm,(20+i)*0x1000);
++		renoir_spi_wr(tlmm,(20+i)*0x1000,(pins[i]&~0x3cu)|4u);
++	}
++	renoir_spi_wr(se,0x28,keys_rd(se,0x28)|0x7f);
++	renoir_spi_wr(se,0xe30,keys_rd(se,0xe30)|0xf);
++	renoir_spi_wr(se,0x24,0x7f);
++	renoir_spi_wr(se,0x20,1);
++	renoir_spi_wr(se,0xe18,0);
++	renoir_spi_wr(se,0xe1c,0);
++	renoir_spi_wr(se,0x614,0);
++	renoir_spi_wr(se,0x258,0);
++	/* Conservative divider128; no reparenting or root RCG programming. */
++	renoir_spi_wr(se,0x48,(128u<<4)|1u);
++	renoir_spi_wr(se,0x7c,0);
++	const uint32_t zero[] = {0x224,0x22c,0x230,0x24c,0x250,0x254,0x25c,0x274,0x278};
++	for(unsigned i=0;i<sizeof(zero)/sizeof(zero[0]);++i) renoir_spi_wr(se,zero[i],0);
++	renoir_spi_wr(se,0x268,4);
++	renoir_spi_wr(se,0x260,0x7f8fe); renoir_spi_wr(se,0x264,0xffefe);
++	renoir_spi_wr(se,0x284,0x7f8fe); renoir_spi_wr(se,0x288,0xffefe);
++	uint8_t hi=0,lo=0;
++	bool ok=renoir_fts_reg(se,0xa3,&hi) && renoir_fts_reg(se,0x9f,&lo);
++	printf("RENOIR SPI: FTS chip-id=%#x%02x valid=%d expected=0x5652; NO touch events\n",hi,lo,ok && hi==0x56 && lo==0x52);
++	if (keys_rd(se,0x40)&1) {
++		printf("RENOIR SPI: abort still busy, configuration retained for diagnosis\n");
++		return;
++	}
++	for(unsigned i=0;i<sizeof(saved)/sizeof(saved[0]);++i) renoir_spi_wr(se,offsets[i],saved[i]);
++	for(unsigned i=0;i<4;++i) renoir_spi_wr(tlmm,(20+i)*0x1000,pins[i]);
++	renoir_spi_wr(gcc,0x52008,vote);
++}
++
+ /* Stage 1 only: read GENI firmware/status, do not clock/reset/configure SPI. */
+ static void
+ renoir_spi_probe(void)
+@@ -196,6 +321,9 @@
+ 	printf("RENOIR SPI: read-only fw=%#x protocol=%u status=%#x clk=%#x tx=%#x rx=%#x hw0=%#x hw1=%#x; no touch events\n",
+ 	    fw, (fw >> 8) & 0xff, keys_rd(se, 0x40), keys_rd(se, 0x60),
+ 	    keys_rd(se, 0x800), keys_rd(se, 0x804), keys_rd(se, 0xe24), keys_rd(se, 0xe28));
++	int id = 0;
++	(void)PE_parse_boot_argn("renoirspiid", &id, sizeof(id));
++	if (id && ((fw >> 8) & 0xff) == 1) renoir_spi_id(se);
+ }
+ 
+ static void
+--- a/bsd/vfs/vfs_syscalls.c
++++ b/bsd/vfs/vfs_syscalls.c
+@@ -9676,6 +9676,42 @@
+ 	return error;
+ }
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++void renoir_timezone_init(void);
++void
++renoir_timezone_init(void)
++{
++	int enabled = 0;
++	if (!PE_parse_boot_argn("renoirshanghai", &enabled, sizeof(enabled)) || !enabled) return;
++	vfs_context_t ctx = vfs_context_current();
++	const char *target = "/usr/share/zoneinfo.default/Asia/Shanghai";
++	const char *link = "/private/var/db/timezone/localtime";
++	const char *temporary = "/private/var/db/timezone/.renoir-localtime";
++	vnode_t zone = NULLVP, old = NULLVP;
++	int error = vnode_lookup(target, 0, &zone, ctx);
++	if (error) { printf("RENOIR TZ: Shanghai zone missing error=%d\n",error); return; }
++	if (vnode_vtype(zone) != VREG) { vnode_put(zone); return; }
++	error = vnode_lookup(link, 0, &old, ctx);
++	if (!error) {
++		bool same = old == zone;
++		vnode_put(old);
++		if (same) { vnode_put(zone); printf("RENOIR TZ: already Asia/Shanghai\n"); return; }
++	}
++	vnode_put(zone);
++	/* Refuse to replace any regular file or directory at this config path. */
++	error = vnode_lookup(link, VNODE_LOOKUP_NOFOLLOW, &old, ctx);
++	if (error) { printf("RENOIR TZ: localtime lookup error=%d\n",error); return; }
++	bool symlink_only = vnode_vtype(old) == VLNK;
++	vnode_put(old);
++	if (!symlink_only) { printf("RENOIR TZ: localtime is not a symlink; unchanged\n"); return; }
++	error = symlinkat_internal(ctx,(user_addr_t)target,AT_FDCWD,
++	    (user_addr_t)temporary,UIO_SYSSPACE);
++	if (!error) error = renameat_internal(ctx,AT_FDCWD,(user_addr_t)temporary,
++	    AT_FDCWD,(user_addr_t)link,UIO_SYSSPACE,0);
++	printf("RENOIR TZ: Asia/Shanghai atomic config error=%d; RTC unchanged\n",error);
++}
++#endif
++
+ int
+ rename(__unused proc_t p, struct rename_args *uap, __unused int32_t *retval)
+ {
+--- a/bsd/kern/bsd_init.c
++++ b/bsd/kern/bsd_init.c
+@@ -1098,6 +1098,10 @@
+ 
+ 	bsd_init_kprintf("bsd_do_post - done");
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	extern void renoir_timezone_init(void);
++	renoir_timezone_init();
++#endif
+ 	load_init_program(p);
+ 	lock_trace = 1;
+ }
