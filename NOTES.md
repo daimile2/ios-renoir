@@ -1,3 +1,10 @@
+# ACTIVE — 0095 TEMPORARY BOOT OKAY; wait startup then screen feedback
+
+- TWRP rebootbootloader + Sending/Booting OKAY, no partitionflash.
+  ../logs/fastboot-gpi-dma-0095-v1.log. Phone RUNNING0095 candidate.
+- No actual mapping/NOP result known yet. No QEMU per user override.
+  Wait screen, then manualFASTBOOT/TWRP log read. User30s rule persists.
+
 # ACTIVE — 0095 CI PASS; QEMU SKIPPED per user; preparing phoneboot
 
 - Sourcef96f64b683dfe75c997bec6ac15b0941ee3648d6 CI39641240765 SUCCESS,
