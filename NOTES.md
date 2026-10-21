@@ -1,3 +1,18 @@
+# ACTIVE — 0096 CI PASS; QEMU SKIPPED; preparing actual faultmask test
+
+- Source200dc4f82f87fc8ddb3fe7f4ea3efab3c8ba7ca8 CI39643642157 SUCCESS,
+  explicit0096 apply. Kernel SHA256
+  cbbc05e151047fe24373e2c0830d81c9379367fc9fd6b3a92e1d1c5c0a315841.
+- Localobject/repository/96patch strictapply pass. QEMU SKIPPED per user.
+- MAIN ../artifacts/xnu-renoir-0096/phone-gpi-dma-v1/shim-boot.img SHA
+  9bbaf3c95755b9c378d9f9758be918fd215db5e42fafc0c7764d72cc2ac40374.
+  args592 inclNUL; unpack payload/stockDTB cmp pass.
+- Samekernel noDMA phone-gpi-alloc-fallback-v1/shim-boot.img SHA
+  24133a970405c4ee57462057b63efe7690c355ecef9d9e9dcf7dfe48c59cdf19.
+  args577. shim/out holds fallback; boot archivedMAIN.
+- Phone rootTWRP; next rebootbootloader + temporary0096. Actual DMA
+  completion NOT known yet. User30s reply-or-pause rule persists.
+
 # ACTIVE — 0095 context/SID published; false FSR test fixed0096; phone TWRP
 
 - User confirms0095 lockscreen/time/keys normal; manualFASTBOOT ->
