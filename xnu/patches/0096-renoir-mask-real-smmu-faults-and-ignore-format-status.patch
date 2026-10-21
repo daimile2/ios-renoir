@@ -1,0 +1,45 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -353,6 +353,9 @@
+ 
+ /* Dedicated 4KiB SMMUv2 tables, 32-bit IOVA / 36-bit PA. All memory
+  * remains permanent until reboot, including on failure. No global bypass. */
++/* FSR[10:9] is read-only Format, not a fault. Linux FSR_FAULT mask:
++ * MULTI|SS|UUT|ASF|TLBLKF|TLBMCF|EF|PF|AFF|TF. */
++#define RENOIR_SMMU_FSR_FAULT 0xc00001feu
+ static vm_offset_t renoir_dma_va, renoir_dma_cb, renoir_dma_smmu;
+ static uint64_t renoir_dma_pa;
+ 
+@@ -451,7 +454,7 @@
+ 	renoir_wr64(bank,0x28,0);
+ 	renoir_spi_wr(bank,0x38,0x44); /* Attr0 normal noncacheable */
+ 	renoir_spi_wr(bank,0x3c,0);
+-	renoir_spi_wr(bank,0x58,keys_rd(bank,0x58)); /* own bank FSR W1C */
++	renoir_spi_wr(bank,0x58,RENOIR_SMMU_FSR_FAULT); /* own fault bits W1C; Format RO */
+ 	renoir_spi_wr(bank,0x610,asid);
+ 	renoir_spi_wr(bank,0x7f0,0);
+ 	unsigned us;
+@@ -547,7 +550,7 @@
+ 		uint32_t rp=0;
+ 		for(us=0;us<250000;us+=100) {
+ 			rp=keys_rd(regs,ev+0x10);
+-			if(rp==0x100010 || keys_rd(renoir_dma_cb,0x58)) break;
++			if(rp==0x100010 || (keys_rd(renoir_dma_cb,0x58)&RENOIR_SMMU_FSR_FAULT)) break;
+ 			delay(100);
+ 		}
+ 		flush_dcache64((addr64_t)(renoir_dma_pa+0x4000),0x1000,TRUE);
+@@ -556,10 +559,11 @@
+ 		uint32_t code=event[2]>>24;
+ 		success=rp==0x100010 && event[0]==0x101000 && !event[1] &&
+ 		    ((event[3]>>16)&255)==0x22 && !(event[3]>>24) && !(event[3]&0xffff) &&
+-		    (code==1 || code==4) && guard && !keys_rd(renoir_dma_cb,0x58);
+-		printf("RENOIR DMA NOP: success=%d wait-us=%u ev-rp=%#x data=%08x/%08x/%08x/%08x guard=%d FSR=%#x FAR=%#x:%08x gpi-global=%#x\n",
++		    (code==1 || code==4) && guard && !(keys_rd(renoir_dma_cb,0x58)&RENOIR_SMMU_FSR_FAULT);
++		printf("RENOIR DMA NOP: success=%d wait-us=%u ev-rp=%#x data=%08x/%08x/%08x/%08x guard=%d FSR=%#x faults=%#x format=%u FAR=%#x:%08x gpi-global=%#x\n",
+ 		    success,us,rp,event[0],event[1],event[2],event[3],guard,
+-		    keys_rd(renoir_dma_cb,0x58),keys_rd(renoir_dma_cb,0x64),
++		    keys_rd(renoir_dma_cb,0x58),keys_rd(renoir_dma_cb,0x58)&RENOIR_SMMU_FSR_FAULT,
++		    (keys_rd(renoir_dma_cb,0x58)>>9)&3,keys_rd(renoir_dma_cb,0x64),
+ 		    keys_rd(renoir_dma_cb,0x60),keys_rd(regs,base+0x3100));
+ 	}
+ 	printf("RENOIR DMA FAULT: GFSR=%#x GFSYNR0=%#x GFSYNR1=%#x GFSYNR2=%#x (read-only global status)\n",

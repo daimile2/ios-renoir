@@ -1,3 +1,24 @@
+# ACTIVE — 0095 context/SID published; false FSR test fixed0096; phone TWRP
+
+- User confirms0095 lockscreen/time/keys normal; manualFASTBOOT ->
+  temporaryTWRP/rootADB. Phone NOW recovery. QEMU skip preference active.
+- ../logs/ios-gpi-dma-0095-v1.txt (117376bytes flush10): context/SID
+  readbacks pass, slot7 CB7 ASID255, IOVA100000+10000 -> PA203908000,
+  tables203904000. CH0/CH1 START fresh1/state2/10us each.
+- NOP doorbell submitted but poll exits0us on FSR400; EV RP100000,
+  event zeros, paddingguard1, GPIglobal0, GFSR0. RESET+dealloc all pass.
+  No valid DMA completion event demonstrated yet.
+- ROOTCAUSE: FSR400 is read-only Format[10:9]=2/AArch64, NOT fault.
+  Confirmed Arm IHI0062D.c §16.5.9 pages16-299/300 and pinned Linux
+  FSR_FAULT=c00001fe. Old any-FSR-nonzero predicate stopped immediately.
+  FAR is not meaningful with faultmask0. Local PDF/render evidence
+  ../toolchain/renoir-linux-reference/gpi/arm-smmuv2-spec.*,
+  ../artifacts/arm-smmu-fsr-299.png and300.png.
+- 0096 uses only FSR_FAULT for poll/success, W1C only fault bits, logs
+  rawFSR/faults/format separately. All pool/guards/addresses unchanged.
+- Localobject/repository96patch pass, strictapply pending thenfullCI.
+  NO QEMU per explicit user override. User30s reply-or-pause persists.
+
 # ACTIVE — 0095 TEMPORARY BOOT OKAY; wait startup then screen feedback
 
 - TWRP rebootbootloader + Sending/Booting OKAY, no partitionflash.
