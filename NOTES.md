@@ -1,3 +1,17 @@
+# ACTIVE — 2026-10-22 0091 CI/QEMU PASS; preparing temporary boot
+
+- Source50be970937cfc9d0d9b5c5840f234a1e825459cd CI39630379114 SUCCESS;
+  explicit0091 patch apply. Kernel SHA256
+  7cafffbb2a3e1b503f69f5a4ce8ce8ca469b1bf3827ebf3bc3b63f8cea202214.
+- Local object/repository/91patch strict apply pass. QEMU45s PID1 and
+  two heartbeats, no panic observed; hardware paths disabled there.
+- ../artifacts/xnu-renoir-0091/phone-gpi-alloc-v1/shim-boot.img SHA256
+  20215b0c9fe0e6782762ca5f3997cf8765e12657fe8bd7c0e5dcce99c249c9d8.
+  577byte args includingNUL. StockDTB/payload unpack-cmp pass.
+- Phone root TWRP; next adb reboot bootloader and temporaryboot0091.
+  No phone0091 result yet. No DMA/SMMU writes, no touch ID/events.
+- Preserve0088 fallback. User30s reply-or-pause rule remains active.
+
 # ACTIVE — 0090 read; allocator withheld; 0091 fixes false-busy predicate
 
 - User confirms0090 lockscreen/time/keys normal, then manualFASTBOOT.
