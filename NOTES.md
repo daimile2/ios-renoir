@@ -1,3 +1,10 @@
+# ACTIVE — 0096 TEMPORARY BOOT OKAY; waiting screen/log confirmation
+
+- TWRP rebootbootloader andSending/Booting OKAY, no partitionflash.
+  ../logs/fastboot-gpi-dma-0096-v1.log. Phone RUNNING0096 candidate.
+- Actual NOP completion not known. QEMU skipped by explicit user.
+  Wait startup then numbered question; no reply30s => pause andsave.
+
 # ACTIVE — 0096 CI PASS; QEMU SKIPPED; preparing actual faultmask test
 
 - Source200dc4f82f87fc8ddb3fe7f4ea3efab3c8ba7ca8 CI39643642157 SUCCESS,
