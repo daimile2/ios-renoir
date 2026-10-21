@@ -1,0 +1,44 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -364,11 +364,11 @@
+ 		/* Unallocated ring pointers and scratch1..3 are undefined, not
+ 		 * ownership markers. 0090 incorrectly required them all zero.
+ 		 * DT grants dynamic groups1..6 to this EE. State0 plus no protocol
+-		 * association/output IRQ permits an ALLOCATE ownership request;
++		 * association/pending IRQ permits an ALLOCATE ownership request;
+ 		 * only fresh command completion can establish that it succeeded. */
+ 		bool idle=tx!=0xffffffffu && rx!=0xffffffffu && ev!=0xffffffffu &&
+ 		    !(((tx|rx|ev)>>20)&15) && !(tx&7) && !(rx&7) && !(ev&15) &&
+-		    !scratch0 && !scratch1 && !output;
++		    !scratch0 && !scratch1 && !keys_rd(regs,base+0x3080);
+ 		printf("RENOIR GPI SELECT: group=%u idle=%d cfg=%#x/%#x/%#x scratch0=%#x/%#x output-mask=%#x unused-ring-values-ignored\n",
+ 		    group,idle,tx,rx,ev,scratch0,scratch1,output);
+ 		if(idle) break;
+@@ -378,8 +378,18 @@
+ 		return;
+ 	}
+ 	printf("RENOIR GPI ALLOC: group=%u idle/unassociated; request ownership, output IRQ masked; no ring/START/doorbell/DMA\n",group);
+-	/* Keep type output mask zero; source masks collect command status.
++	/* Bootloader leaves output mask0x7f even on unallocated groups.
++	 * It is routing state, not ownership. Preserve it and mask the output
++	 * while polling source completion without a GIC handler.
++	 * Source masks collect command status.
+ 	 * No MSI routing, global IRQ, shared GPI reset or firmware writes. */
++	uint32_t output=keys_rd(regs,base+0x3088);
++	renoir_spi_wr(regs,base+0x3088,0);
++	if(keys_rd(regs,base+0x3088)!=0) {
++		renoir_spi_wr(regs,base+0x3088,output);
++		printf("RENOIR GPI ALLOC: cannot mask output; command withheld\n");
++		return;
++	}
+ 	uint32_t chmask=keys_rd(regs,base+0x3098);
+ 	uint32_t evmask=keys_rd(regs,base+0x309c);
+ 	renoir_spi_wr(regs,base+0x3098,3);
+@@ -396,6 +406,7 @@
+ 	if(ev) ok=renoir_gpi_command(regs,base,0,true,10)&&ok;
+ 	renoir_spi_wr(regs,base+0x3098,chmask);
+ 	renoir_spi_wr(regs,base+0x309c,evmask);
++	renoir_spi_wr(regs,base+0x3088,output);
+ 	printf("RENOIR GPI ALLOC: group=%u allocate/release=%d ev=%d tx=%d rx=%d; failed commands require reboot; DMA never submitted\n",
+ 	    group,ok,ev,tx,rx);
+ }

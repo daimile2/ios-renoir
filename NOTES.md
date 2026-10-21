@@ -1,3 +1,19 @@
+# ACTIVE — 2026-10-22 0091 read; output-mask predicate fixed in0092
+
+- User confirms0091 lockscreen/time/keys normal. ManualFASTBOOT then
+  temporary TWRP/root adb successful. Phone NOW TWRP.
+- Pulled ../logs/ios-gpi-alloc-0091-v1.txt (121316bytes, flush11).
+  All groups cfg0, scratch0; output mask0x7f each, so idle predicate
+  rejected them. No GPI command sent. Earlier attribution to unused
+  ring contents was premature: actual confirmed blocker is IRQ mask.
+- 0092 does not treat output IRQ mask as ownership. Requires DT dynamic
+  group state0/no protocol/scratch association/no pending type IRQ.
+  Saves and masks output (readback required), polls fresh completion,
+  restores source and output masks. NoSTART/doorbell/SMMU writes/DMA.
+- Local object and92patch repository checks pass; strictapply pending,
+  then fullCI/QEMU/phone. Do not claim allocator or touch working yet.
+- User30s reply-or-pause rule persists for next requested feedback.
+
 # ACTIVE — 0091 TEMPORARY BOOT OKAY; screen/log results pending
 
 - TWRP adb reboot bootloader succeeded, then Sending/Booting OKAY in
