@@ -1,0 +1,18 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -366,9 +366,12 @@
+ static bool
+ renoir_dma_mapping(vm_offset_t regs,uint32_t own_base)
+ {
+-	/* The SID belongs to this GPI controller, so reject any other active
+-	 * group, including static group0, before adding a stream mapping. */
+-	for(unsigned g=0;g<12;++g) {
++	/* Only DT assigned groups0..6 are readable in this environment.
++	 * Hardware capacity12 does not grant access to groups7..11:0093
++	 * faulted on group7 context read (external abort), before SMMU writes.
++	 * Observe static0, never allocate it; dynamic mask remains1..6. */
++	printf("RENOIR DMA MAP: inventory only readable DT groups0..6; groups7..11 not accessed\n");
++	for(unsigned g=0;g<7;++g) {
+ 		uint32_t off=0x10000+0x4000*g;
+ 		if(off==own_base) continue;
+ 		uint32_t a=keys_rd(regs,off),b=keys_rd(regs,off+0x80),e=keys_rd(regs,off+0x1000);

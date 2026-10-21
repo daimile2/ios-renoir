@@ -1,3 +1,24 @@
+# ACTIVE — 0093 panic symbolicated; 0094 bounds fix prepared; phone TWRP
+
+- User2 reported panic and latestphoto ../IMG_2726.jpeg, then confirmed
+  FASTBOOT. TemporaryTWRP/rootADB successful; phone NOW recovery.
+- ../logs/ios-gpi-dma-0093-v1.txt is STALE0092 (102165bytes flush8),
+  no new0093 flush. Do not interpret this as successful0093 DMA.
+- Photo PCfffffe00074ee268 ESR96000010 FARfffffe79cb9e0000.
+  llvm-objdump exact0093 kernel: LDR w12,[x10,x11] in inlined GPI
+  inventory in sweet_keys_init. x8=7, regsVAfffffe79cb9b4000,
+  offset2c000 -> group7 contextPA92c000. External abort from ungranted
+  group7 access. Hardware max12 != access grant. G0..6 reads passed.
+  ../artifacts/xnu-renoir-0093/panic-analysis.json andpanic-disasm.txt.
+- This occurs BEFORE SMMU configuration/contiguous allocation/doorbell;
+  no DMA submitted. Last photo shows EV/TX/RX allocate completed.
+  'handshake structure not initialized' is panic output, not rootcause.
+- 0094 limits inventory to readable DT groups0..6, logs scope; never
+  accesses7..11. Does not allocate static0. Other0093 map/NOP unchanged.
+- Localobject/repository94patch pass, strictapply pending; thenCI/QEMU/
+  temporaryphone. Keep0093 DMA image marked BAD. 0093 noDMA fallback
+  and0088 remain available. User30s reply-or-pause rule persists.
+
 # ACTIVE — 0093 TEMPORARY BOOT OKAY; user3 still booting
 
 - TWRP rebootbootloader + Sending/Booting OKAY, no partitionflash.
