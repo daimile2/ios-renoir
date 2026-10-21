@@ -1,3 +1,32 @@
+# ACTIVE — 0089 READY, NOT BOOTED; awaiting manual FASTBOOT
+
+- CI39590312858 SUCCESS source72f4b8186b0b5186f52314896fb31af054007aea.
+  Explicit0089 apply; kernel SHA256
+  d0df2cfac12370a485555dcb63719dd68fc1c49db19c4e6eb92e3e0f53999166.
+- Restricted-timer QEMU45s new kernel/mockfs test: PID1+two heartbeats,
+  zero unknown glyphs, no panic observed. Hardware flags disabled there.
+- Main ../artifacts/xnu-renoir-0089/phone-gpi-smmu-v1/shim-boot.img
+  SHA7db4f1e4f24731b469877039ebd9ea71fe12059c525ebea0e228e89c1810c0e8.
+  Unpack payload/stock DTB cmp pass; args559bytes. Same0088 power/reset,
+  time/keys/10Hz baseline, adds renoirgpiprobe1. No DMA or touch events.
+  Fallback phone-timezone-fallback-v1 disables active power/ID/GPI probe.
+- Phone root TWRP -> adb reboot bootloader returned but USB did not
+  re-enumerate. fastboot boot timed out45s waiting for any device (exit124).
+  NO Sending/Booting, image NOT sent or booted. No root reflash.
+  ../logs/fastboot-gpi-smmu-0089-v1.log. Requested manual FASTBOOT.
+- User explicitly requests pause if any requested reply absent30s. Await
+  numbered response; after30s with no reply save state and pause. Do not
+  keep rebooting or advancing device actions without that response.
+- Await stable lockscreen; user should wait30s then FASTBOOT for log pull.
+  If crash, use screen photo if new log not yet flushed; read-only SMMU
+  access still requires actual hardware validation. Do not assume test
+  probes executed just because QEMU passed.
+- Next inspect RENOIR GPI group states/scratch and RENOIR SMMU SID4d6
+  match type/CB. Do not assume channel ownership or PA==IOVA. Driver
+  engineering route ../GSI触控移植路线.md records ordering and source refs.
+  0088 confirms power requests/reset and FIFO-disable1; actual chip ID
+  remains unread, no HID touch implemented.
+
 # ACTIVE — 0088 power/reset VERIFIED, GSI-only interface CONFIRMED; 0089 probe
 
 - Pulled ../logs/ios-power-fifo-0088-v1.txt (114141bytes flush11) via
