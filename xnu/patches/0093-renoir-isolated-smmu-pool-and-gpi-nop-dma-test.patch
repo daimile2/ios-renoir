@@ -1,0 +1,288 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -13,6 +13,11 @@
+ #include <kern/sched_prim.h>
+ #include <machine/machine_routines.h>
+ #include <pexpert/pexpert.h>
++#include <arm/caches_internal.h>
++#include <vm/pmap.h>
++#include <vm/vm_kern.h>
++
++extern ppnum_t pmap_find_phys(pmap_t, addr64_t);
+ 
+ extern vm_offset_t ml_io_map(vm_offset_t, vm_size_t);
+ extern void sweet_hid_key(int key, int down);
+@@ -343,7 +348,226 @@
+ 	    event?"EV":"CH",channel,opcode,fresh,state,us,keys_rd(regs,base+0x3200));
+ 	/* Downstream driver treats completed DEALLOC as software state0 even
+ 	 * if the hardware context still reports ALLOCATED. */
+-	return fresh && (opcode==10 || state==1);
++	return fresh && (opcode==10 || state==(opcode==1?2u:1u));
++}
++
++/* Dedicated 4KiB SMMUv2 tables, 32-bit IOVA / 36-bit PA. All memory
++ * remains permanent until reboot, including on failure. No global bypass. */
++static vm_offset_t renoir_dma_va, renoir_dma_cb, renoir_dma_smmu;
++static uint64_t renoir_dma_pa;
++
++static void
++renoir_wr64(vm_offset_t regs, uint32_t off, uint64_t value)
++{
++	*(volatile uint64_t *)(regs+off)=value;
++	__asm__ volatile("dsb oshst" ::: "memory");
++}
++
++static bool
++renoir_dma_mapping(vm_offset_t regs,uint32_t own_base)
++{
++	/* The SID belongs to this GPI controller, so reject any other active
++	 * group, including static group0, before adding a stream mapping. */
++	for(unsigned g=0;g<12;++g) {
++		uint32_t off=0x10000+0x4000*g;
++		if(off==own_base) continue;
++		uint32_t a=keys_rd(regs,off),b=keys_rd(regs,off+0x80),e=keys_rd(regs,off+0x1000);
++		if(a==0xffffffffu || b==0xffffffffu || e==0xffffffffu || (((a|b|e)>>20)&15)) {
++			printf("RENOIR DMA MAP: other GPI group=%u active/unreadable; mapping withheld\n",g);
++			return false;
++		}
++	}
++	vm_offset_t smmu=ml_io_map(0x15000000u,0x4000);
++	if(!smmu) return false;
++	uint32_t cr0=keys_rd(smmu,0), id0=keys_rd(smmu,0x20);
++	if(id0!=0x4c017e59u || keys_rd(smmu,0x24)!=0x6000003cu ||
++	    keys_rd(smmu,0x28)!=0x5111u || (cr0&9) || !(cr0&(1u<<10))) {
++		printf("RENOIR DMA MAP: capability/default-fault guard failed\n"); return false;
++	}
++	bool used[60]={false};
++	unsigned slot=89;
++	for(unsigned i=0;i<89;++i) {
++		uint32_t smr=keys_rd(smmu,0x800+4*i), s2cr=keys_rd(smmu,0xc00+4*i);
++		if(!(smr&(1u<<31))) { if(slot==89) slot=i; continue; }
++		if(!((0x4d6u^smr)&~(smr>>16)&0x7fff)) {
++			printf("RENOIR DMA MAP: SID already owned; unchanged\n"); return false;
++		}
++		if(((s2cr>>16)&3)==0) {
++			if((s2cr&255)>=60) return false;
++			used[s2cr&255]=true;
++		}
++	}
++	vm_offset_t banks=ml_io_map(0x15080000u,60u<<12);
++	if(slot==89 || !banks) return false;
++	unsigned cb;
++	for(cb=0;cb<60;++cb)
++		if(!used[cb] && !(keys_rd(banks,cb<<12)&1) &&
++		    !keys_rd(smmu,0x1000+4*cb) && !keys_rd(smmu,0x1800+4*cb)) break;
++	if(cb==60) { printf("RENOIR DMA MAP: no disabled unreferenced bank\n"); return false; }
++	/* Choose an ASID absent from every referenced bank, avoiding any
++	 * invalidation of another stream's translations. Never global TLBI. */
++	unsigned asid;
++	for(asid=255;asid>0;--asid) {
++		bool collision=false;
++		for(unsigned c=0;c<60;++c) if(used[c]) {
++			if((keys_rd(banks,(c<<12)+0x24)>>16)==asid ||
++			    (keys_rd(banks,(c<<12)+0x2c)>>16)==asid) collision=true;
++		}
++		if(!collision) break;
++	}
++	if(!asid) return false;
++	if(kmem_alloc_contig(kernel_map,&renoir_dma_va,0x14000,PAGE_MASK,0,0,
++	    KMA_DATA|KMA_ZERO|KMA_PERMANENT,VM_KERN_MEMORY_IOKIT)!=KERN_SUCCESS) return false;
++	ppnum_t pn=pmap_find_phys(kernel_pmap,(addr64_t)renoir_dma_va);
++	if(!pn) return false;
++	renoir_dma_pa=ptoa_64(pn);
++	if((renoir_dma_pa&0x3fff) || renoir_dma_pa+0x14000>(1ULL<<36)) return false;
++	for(unsigned off=0;off<0x14000;off+=PAGE_SIZE)
++		if(ptoa_64(pmap_find_phys(kernel_pmap,(addr64_t)(renoir_dma_va+off)))!=renoir_dma_pa+off)
++			return false;
++	uint64_t *l1=(uint64_t *)renoir_dma_va;
++	uint64_t *l2=(uint64_t *)(renoir_dma_va+0x1000);
++	uint64_t *l3=(uint64_t *)(renoir_dma_va+0x2000);
++	l1[0]=(renoir_dma_pa+0x1000)|3;
++	l2[0]=(renoir_dma_pa+0x2000)|3;
++	for(unsigned i=0;i<16;++i)
++		l3[256+i]=(renoir_dma_pa+0x4000+0x1000*i)|(3ULL<<53)|0xe43;
++	/* All other entries invalid: guards at0xff000 and0x110000. */
++	if(l3[255] || l3[272] || (l1[0]&~0xfffULL)!=renoir_dma_pa+0x1000 ||
++	    (l2[0]&~0xfffULL)!=renoir_dma_pa+0x2000) return false;
++	clean_dcache64((addr64_t)renoir_dma_pa,0x14000,TRUE);
++	__asm__ volatile("dsb sy" ::: "memory");
++	vm_offset_t bank=banks+(cb<<12);
++	/* Recheck ownership immediately before publishing a new mapping. */
++	if(keys_rd(smmu,0x800+4*slot)&(1u<<31) || keys_rd(bank,0)&1) return false;
++	renoir_spi_wr(smmu,0x1800+4*cb,1); /* CBA2R VA64 */
++	renoir_spi_wr(smmu,0x1000+4*cb,0x1f300); /* S1, S2 bypass */
++	renoir_spi_wr(bank,0x10,0x38011); /* IPS36, SEP upstream, AS16 */
++	renoir_spi_wr(bank,0x30,0x802020); /* EPD1, outer-shareable NC walk, IAS32 */
++	renoir_wr64(bank,0x20,renoir_dma_pa|((uint64_t)asid<<48));
++	renoir_wr64(bank,0x28,0);
++	renoir_spi_wr(bank,0x38,0x44); /* Attr0 normal noncacheable */
++	renoir_spi_wr(bank,0x3c,0);
++	renoir_spi_wr(bank,0x58,keys_rd(bank,0x58)); /* own bank FSR W1C */
++	renoir_spi_wr(bank,0x610,asid);
++	renoir_spi_wr(bank,0x7f0,0);
++	unsigned us;
++	for(us=0;us<100000 && (keys_rd(bank,0x7f4)&1);us+=10) delay(10);
++	if(us==100000) {
++		printf("RENOIR DMA MAP: context TLB sync timeout; SID unpublished\n"); return false;
++	}
++	/* Fault recording, no fault IRQ or stall. Nonshareable bypass attrs;
++	 * actual stage1 translation and AF/TRE enabled. */
++	renoir_spi_wr(bank,0,0xc01027);
++	uint32_t sctlr=keys_rd(bank,0);
++	bool readback=(sctlr&0x0fdf11f7)==0xc01027 &&
++	    (keys_rd(bank,0x30)&0x0080ffff)==0x802020 &&
++	    (keys_rd(bank,0x10)&0x38017)==0x38011 && (keys_rd(smmu,0x1800+4*cb)&1) && keys_rd(bank,0x20)==(uint32_t)renoir_dma_pa &&
++	    keys_rd(bank,0x24)==((uint32_t)(renoir_dma_pa>>32)|(asid<<16)) &&
++	    keys_rd(bank,0x38)==0x44 && keys_rd(smmu,0x1000+4*cb)==0x1f300;
++	if(!readback) {
++		renoir_spi_wr(bank,0,0);
++		printf("RENOIR DMA MAP: context readback failed SCTLR=%#x TCR=%#x TCR2=%#x TTBR=%#x:%08x CBAR=%#x; SID unpublished\n",
++            sctlr,keys_rd(bank,0x30),keys_rd(bank,0x10),keys_rd(bank,0x24),keys_rd(bank,0x20),keys_rd(smmu,0x1000+4*cb)); return false;
++	}
++	uint32_t old_smr=keys_rd(smmu,0x800+4*slot),old_s2cr=keys_rd(smmu,0xc00+4*slot);
++	renoir_spi_wr(smmu,0xc00+4*slot,0x300|cb);
++	renoir_spi_wr(smmu,0x800+4*slot,0x800004d6);
++	if(keys_rd(smmu,0x800+4*slot)!=0x800004d6 ||
++	    keys_rd(smmu,0xc00+4*slot)!=(0x300|cb)) {
++		renoir_spi_wr(smmu,0x800+4*slot,old_smr);
++		renoir_spi_wr(smmu,0xc00+4*slot,old_s2cr);
++		renoir_spi_wr(bank,0,0);
++		printf("RENOIR DMA MAP: stream readback failed; unpublished\n"); return false;
++	}
++	renoir_dma_cb=bank;
++	renoir_dma_smmu=smmu;
++	printf("RENOIR DMA MAP: SID4d6 slot=%u CB=%u ASID=%u IOVA100000+10000 PA=%#llx tables=%#llx readback=1 guards-invalid=1; no ATS, memory retained until reboot\n",
++	    slot,cb,asid,renoir_dma_pa+0x4000,renoir_dma_pa);
++	return true;
++}
++
++/* Return -1 on uncertain channel state: caller must leave IRQ output
++ * masked and quarantine everything until reboot. Returns0/1 otherwise. */
++static int
++renoir_gpi_dma_nop(vm_offset_t regs,uint32_t base)
++{
++	if(!renoir_dma_mapping(regs,base)) return 0;
++	uint32_t *event=(uint32_t *)(renoir_dma_va+0x4000);
++	uint32_t *tx=(uint32_t *)(renoir_dma_va+0x5000);
++	/* Event ring16 slots; padding is a corruption guard. */
++	for(unsigned i=64;i<1024;++i) event[i]=0xa5a5a5a5;
++	tx[0]=0;tx[1]=0;tx[2]=0;tx[3]=(1u<<16)|(1u<<8); /* NOP, IEOB */
++	clean_dcache64((addr64_t)(renoir_dma_pa+0x4000),0x10000,TRUE);
++	uint32_t ev=base+0x1000;
++	renoir_spi_wr(regs,ev,0x10010002); /* el16, IRQ, GPI event */
++	renoir_spi_wr(regs,ev+4,0x100);
++	renoir_spi_wr(regs,ev+8,0x100000);
++	renoir_spi_wr(regs,ev+12,0);
++	for(unsigned off=0x20;off<=0x34;off+=4) renoir_spi_wr(regs,ev+off,0);
++	renoir_spi_wr(regs,base+0x2104,0); /* event DB MSB */
++	for(unsigned c=0;c<2;++c) {
++		uint32_t off=base+0x80*c;
++		renoir_spi_wr(regs,off,0x10000002|(c==0?8:0));
++		renoir_spi_wr(regs,off+4,0x100);
++		renoir_spi_wr(regs,off+8,0x101000+0x1000*c);
++		renoir_spi_wr(regs,off+12,0);
++		renoir_spi_wr(regs,base+0x2004+8*c,0);
++		renoir_spi_wr(regs,off+0x60,(c==0?0x10000:0)|0x12);
++		renoir_spi_wr(regs,off+0x64,0);
++		renoir_spi_wr(regs,off+0x68,0);
++		renoir_spi_wr(regs,off+0x6c,0);
++		renoir_spi_wr(regs,off+0x5c,1); /* QoS, per msm_gpi_mmio.h */
++	}
++	bool configured=keys_rd(regs,ev+8)==0x100000 && keys_rd(regs,ev+4)==0x100 &&
++	    keys_rd(regs,ev+12)==0 && (keys_rd(regs,ev)&0xff01000f)==0x10010002 &&
++	    keys_rd(regs,base+8)==0x101000 && keys_rd(regs,base+0x88)==0x102000 &&
++	    keys_rd(regs,base+12)==0 && keys_rd(regs,base+0x8c)==0 &&
++	    keys_rd(regs,base+4)==0x100 && keys_rd(regs,base+0x84)==0x100 &&
++	    (keys_rd(regs,base)&0xff00000f)==0x1000000a &&
++	    (keys_rd(regs,base+0x80)&0xff00000f)==0x10000002 &&
++	    keys_rd(regs,base+0x60)==0x10012 && keys_rd(regs,base+0xe0)==0x12;
++	if(!configured) { printf("RENOIR DMA NOP: ring readback failed; no doorbell\n"); return 0; }
++	/* grant15 event slots, then start empty RX/TX rings */
++	renoir_spi_wr(regs,base+0x2100,0x1000f0);
++	bool started=renoir_gpi_command(regs,base,0,false,1);
++	if(started) started=renoir_gpi_command(regs,base,1,false,1);
++	bool success=false;
++	if(started) {
++		__asm__ volatile("dsb sy" ::: "memory");
++		renoir_spi_wr(regs,base+0x2000,0x101010);
++		unsigned us;
++		uint32_t rp=0;
++		for(us=0;us<250000;us+=100) {
++			rp=keys_rd(regs,ev+0x10);
++			if(rp==0x100010 || keys_rd(renoir_dma_cb,0x58)) break;
++			delay(100);
++		}
++		flush_dcache64((addr64_t)(renoir_dma_pa+0x4000),0x1000,TRUE);
++		bool guard=true;
++		for(unsigned i=64;i<1024;++i) if(event[i]!=0xa5a5a5a5) guard=false;
++		uint32_t code=event[2]>>24;
++		success=rp==0x100010 && event[0]==0x101000 && !event[1] &&
++		    ((event[3]>>16)&255)==0x22 && !(event[3]>>24) && !(event[3]&0xffff) &&
++		    (code==1 || code==4) && guard && !keys_rd(renoir_dma_cb,0x58);
++		printf("RENOIR DMA NOP: success=%d wait-us=%u ev-rp=%#x data=%08x/%08x/%08x/%08x guard=%d FSR=%#x FAR=%#x:%08x gpi-global=%#x\n",
++		    success,us,rp,event[0],event[1],event[2],event[3],guard,
++		    keys_rd(renoir_dma_cb,0x58),keys_rd(renoir_dma_cb,0x64),
++		    keys_rd(renoir_dma_cb,0x60),keys_rd(regs,base+0x3100));
++	}
++	printf("RENOIR DMA FAULT: GFSR=%#x GFSYNR0=%#x GFSYNR1=%#x GFSYNR2=%#x (read-only global status)\n",
++	    keys_rd(renoir_dma_smmu,0x48),keys_rd(renoir_dma_smmu,0x50),
++	    keys_rd(renoir_dma_smmu,0x54),keys_rd(renoir_dma_smmu,0x58));
++	/* LE-VM skips STOP. Reset both channels before release; never free
++	 * DMA memory or unmap a potentially in-flight transaction. */
++	bool reset0=renoir_gpi_command(regs,base,0,false,9);
++	bool reset1=renoir_gpi_command(regs,base,1,false,9);
++	if(!reset0 || !reset1) {
++		printf("RENOIR DMA NOP: reset uncertain; output masked, mapping/memory quarantined until reboot\n");
++		return -1;
++	}
++	renoir_spi_wr(regs,base+0x30c0,1); /* own event IRQ W1C */
++	return success?1:0;
+ }
+ 
+ static void
+@@ -377,7 +601,7 @@
+ 		printf("RENOIR GPI ALLOC: no idle unassociated dynamic group; unchanged\n");
+ 		return;
+ 	}
+-	printf("RENOIR GPI ALLOC: group=%u idle/unassociated; request ownership, output IRQ masked; no ring/START/doorbell/DMA\n",group);
++	printf("RENOIR GPI ALLOC: group=%u idle/unassociated; request ownership, output IRQ masked; DMA test requires separate opt-in\n",group);
+ 	/* Bootloader leaves output mask0x7f even on unallocated groups.
+ 	 * It is routing state, not ownership. Preserve it and mask the output
+ 	 * while polling source completion without a GIC handler.
+@@ -399,16 +623,23 @@
+ 	if(ev) tx=renoir_gpi_command(regs,base,0,false,0);
+ 	if(tx) rx=renoir_gpi_command(regs,base,1,false,0);
+ 	ok=ev&&tx&&rx;
+-	/* No STOP/RESET: no channel was started. On timeout ownership is
+-	 * uncertain; do not retry another group or reset shared hardware. */
++	int dma=0;
++	(void)PE_parse_boot_argn("renoirgpidma",&dma,sizeof(dma));
++	if(ok && dma) {
++		int result=renoir_gpi_dma_nop(regs,base);
++		if(result<0) return; /* uncertain DMA: keep masked and quarantine */
++		printf("RENOIR GPI ALLOC: DMA NOP result=%d (separate from allocator)\n",result);
++	}
++	/* DMA helper resets started channels before returning. Without DMA,
++	 * no RESET is needed. Never reset shared hardware or retry groups. */
+ 	if(rx) ok=renoir_gpi_command(regs,base,1,false,10)&&ok;
+ 	if(tx) ok=renoir_gpi_command(regs,base,0,false,10)&&ok;
+ 	if(ev) ok=renoir_gpi_command(regs,base,0,true,10)&&ok;
+ 	renoir_spi_wr(regs,base+0x3098,chmask);
+ 	renoir_spi_wr(regs,base+0x309c,evmask);
+ 	renoir_spi_wr(regs,base+0x3088,output);
+-	printf("RENOIR GPI ALLOC: group=%u allocate/release=%d ev=%d tx=%d rx=%d; failed commands require reboot; DMA never submitted\n",
+-	    group,ok,ev,tx,rx);
++	printf("RENOIR GPI ALLOC: group=%u allocate/release=%d ev=%d tx=%d rx=%d; failed commands require reboot; DMA-option=%d\n",
++	    group,ok,ev,tx,rx,dma);
+ }
+ 
+ /* Live DT: gpi-top900000, EE offset10000. Downstream subtracts the EE
+@@ -419,7 +650,7 @@
+ {
+ 	vm_offset_t regs=ml_io_map(0x00900000u,0x60000);
+ 	if(!regs) { printf("RENOIR GPI: mapping failed\n"); return; }
+-	printf("RENOIR GPI: read-only top=0x900000 ee-subtract=0x10000 dynamic-mask=0x7e SE=2 proto=SPI; no channel commands\n");
++	printf("RENOIR GPI: read-only top=0x900000 ee-subtract=0x10000 dynamic-mask=0x7e SE=2 proto=SPI; read-only inventory before optional commands\n");
+ 	unsigned candidates=0;
+ 	for(unsigned g=1;g<=6;++g) {
+ 		uint32_t base=0x10000+0x4000*g;

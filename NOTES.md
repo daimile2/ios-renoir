@@ -1,3 +1,27 @@
+# ACTIVE — 0093 isolated SID mapping + NOP DMA prepared; phone TWRP
+
+- 0092 actual GPI EV/TX/RX allocate/deallocate verified (see below).
+- 0093 opt-in renoirgpidma1 requires allocator+probe, preserves0088 time/
+  keys10Hz/power/reset. Host RENOIR_GPI_DMA1 option added; args fit.
+- Exact known SMMU capabilities/default-fault required. Scan all12 GPI
+  groups: reject any other active/unreadable group. TargetSID4d6 must
+  have no current match. Choose invalidSMR and unreferenced/disabled
+  CB with zeroCBAR/CBA2R; unused ASID255..1 checked against active banks.
+- Permanent80KiB contiguous allocation: three4KiB tables + padding +
+  dedicated64KiB DMA pool. IOVA100000..10ffff only, both adjacent guards
+  invalid, IAS32/OAS36, NC pagewalk/leaf with cache maintenance.
+- Configure only selectedCB and exactSID entry, readback required;
+  no globalCR0/bypass/ATS/reset changes. Shared global fault regs read
+  only. On setup failure no doorbell; memory remains until reboot.
+- Configure16element EV/TX/RX rings, startemptychannels, submitoneNOP
+  IEOB (source format NOOP_TRE/NOOP_TRE_MASK), no SPI command. Validate
+  EV pointer/type/code/status, guard and ownCB FSR; log GFSR/syndromes.
+  LE-VM cleanup RESETs bothchannels then deallocates. Reset timeout:
+  leave output masked, retain mapping/memory, reboot required.
+- Local object and repository93patch format pass, strictapply pending;
+  fullCI/QEMU/real phone still required. NO DMA success claim yet.
+- User30s reply-or-pause rule persists for next requested observation.
+
 # ACTIVE — 2026-10-22 0092 GPI COMMAND ALLOCATOR VERIFIED; phone TWRP
 
 - User confirms0092 lockscreen/time/keys normal; manualFASTBOOT then
