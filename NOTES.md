@@ -1,3 +1,20 @@
+# ACTIVE — 2026-10-22 0092 GPI COMMAND ALLOCATOR VERIFIED; phone TWRP
+
+- User confirms0092 lockscreen/time/keys normal; manualFASTBOOT then
+  temporaryTWRP successful. NOW root recoveryADB. No partition flash.
+- Pulled ../logs/ios-gpi-alloc-0092-v1.txt (102165bytes flush8).
+  group1 selected idle; EV/TX/RX ALLOCATE each fresh1/state1/wait10us;
+  reverse CH1/CH0/EV DEALLOC each fresh1/state0/wait10us.
+  allocate/release1 ev1 tx1 rx1. Outputmask7f was routing, not occupancy.
+- No DMA submitted, no chipID or touch events. SMMU unchanged:
+  freeSMR82 first7; SID4d6 no match; CB7/8/9 unreferenced M0 but
+  undefined/retained TTBR values; ATS not supported. Do not use ATS1PR.
+- Next dedicated SMMU 4KiB tables/small IOVA pool + bounded GPI DMA
+  event test before any SPI chip access. Need preserve all other SMRs,
+  contexts, globalCR0, allocate permanent dedicated pages; quarantine
+  memory on timeout. LE-VM teardown follows RESET, not blind STOP.
+- User30s reply-or-pause rule still applies to next requested feedback.
+
 # ACTIVE — 0092 TEMPORARY BOOT OKAY; waiting startup/screen feedback
 
 - TWRP adb reboot bootloader succeeded. ../logs/fastboot-gpi-alloc-0092-v1.log
