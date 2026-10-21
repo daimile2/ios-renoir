@@ -1,3 +1,36 @@
+# ACTIVE — 0088 CI/QEMU PASSED; power/FIFO diagnostic boot RUNNING
+
+- CI39588141935 SUCCESS sourceb1765faef896ecc56487350c8337b4f1800ca461.
+  Explicit0088 apply in log. Kernel SHA256
+  b4bcf9dec78d6117337a91845ec82f669ae8fd67158a9fab602235135ca34def.
+- Restricted timer45s QEMU new kernel: testPID1 +two heartbeats, zero
+  unknown glyphs, no panic observed. Hardware flags disabled there.
+- Main ../artifacts/xnu-renoir-0088/phone-power-fifo-v1/shim-boot.img
+  SHAa194831438ff3a769291d33cf71719a2d13867fc0107470fdadab3e95f5a0cc8.
+  Unpack payload/stock DTB cmp pass. Same RTC/timezone/keys/10Hz, power1,
+  ID1, sampleoff as0087; only new control/log separation via0088 patch.
+  Fallback phone-timezone-fallback-v1 disables active touch trial.
+- Root TWRP -> adb reboot bootloader -> temporary fastboot main boot
+  Sending/Booting OKAY; ../logs/fastboot-power-fifo-0088-v1.log. No root reflash.
+- User should wait lockscreen+30s logging then return FASTBOOT for pull.
+  Inspect power-option, fifo-before/clocked, branch, RPMh geometry/cmd-db/
+  both LDO votes, reset release, chip ID or specific withheld condition.
+  No touch events implemented, no claim power/FIFO/GSI works yet.
+- Known-working fallback baseline0087: correct local time +physical keys,
+  user verified. Never compensate timezone by offsetting RTC calibration.
+
+# 0088 CI39588141935 in progress; known-working time0087 preserved
+
+- CI sourceb1765faef896ecc56487350c8337b4f1800ca461. Phone root TWRP.
+- Added pinned Xiaomi rpmh-rsc.c reference locally; actual allocation loop
+  follows DT pair order, confirming ACTIVE TCS2..4 (not enum-order0..2).
+- Conditional future GSI sources saved ../toolchain/renoir-linux-reference/
+  gpi/{gpi.c,msm_gpi_mmio.h,msm_gpi.h,provenance.json}; no GSI driver yet.
+  Do not assert FIFO disabled until0088 prints actual clocked register64.
+- Next wait CI, download0088, restricted-timer QEMU45s, package using same
+  root tools/build-rtc-spi.sh power/ID/Shanghai envs, temporary boot. Preserve
+  current validated time, keys,10Hz. No userdata reflash.
+
 # ACTIVE — 0088 decouple power init from SPI FIFO gate
 
 - User0087 time NORMAL, verified timezone milestone. User FASTBOOT,
