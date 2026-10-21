@@ -1,3 +1,15 @@
+# ACTIVE — 0089 TEMPORARY BOOT OKAY; user 30s reply-or-pause rule
+
+- User first chose2(pause), immediately corrected to1(continue). Latest1
+  treated as resume/correction. fastboot devices confirmed single phone.
+- Temporary boot0089 retry Sending/Booting OKAY, no partition flash.
+  ../logs/fastboot-gpi-smmu-0089-v1-retry.log. Phone RUNNING0089 candidate.
+- Await screen observation, then lockscreen+30s -> manual FASTBOOT ->
+  TWRP log pull. If user request reply has no response30s, pause work and
+  save state, no automatic device actions. User explicit pause rule persists.
+- Need inspect GPI group states and SMMU SID4d6 mapping. No channel/DMA
+  operations implemented. Existing0088 power/reset success is separate.
+
 # ACTIVE — 0089 READY, NOT BOOTED; awaiting manual FASTBOOT
 
 - CI39590312858 SUCCESS source72f4b8186b0b5186f52314896fb31af054007aea.
