@@ -1,3 +1,14 @@
+# ACTIVE — 0096 screen normal; log retrieval paused awaiting recovery status
+
+- User confirmed0096 lockscreen/time/keys normal, then FASTBOOT ready.
+- Temporary TWRP Sending/Booting OKAY; ../logs/fastboot-twrp-after-0096.log.
+- ADB absent throughout24x5s poll; fastboot also absent afterwards.
+  Recovery UI state unknown. No0096 log retrieved; DMA outcome unknown.
+- Asked numbered recovery-screen question; no response30s => PAUSED per user.
+  No partition writes. Next: obtain recovery status, restore rootADB, pull
+  ../logs/ios-gpi-dma-0096-v1.txt; inspect DMA NOP actualfaultmask/event.
+- QEMU remains skipped by user. Do not infer completion from normal GUI.
+
 # ACTIVE — 0096 TEMPORARY BOOT OKAY; waiting screen/log confirmation
 
 - TWRP rebootbootloader andSending/Booting OKAY, no partitionflash.
