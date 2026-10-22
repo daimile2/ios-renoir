@@ -1,3 +1,15 @@
+# ACTIVE — 0099 CI39767320682 queued; phone0097GUI confirmed, keepitthere
+
+- Finalsourcef01c7286e861feae9fc7e387028f764b138a549c onrenoir/input.
+  Local2objectsPASS +finalkeysPASS, all99patchesstrictPASS, repo/diffPASS.
+  CI39767320682 submitted. QEMUskippedbyuser.
+- NextwaitCI/downloadkernel+logs usinglocalproxy127.0.0.1:12334,
+  build0099 gpilock2main andgpilock1fallback, then askuserFASTBOOT.
+- Currentphone0097lockscreen verifiedbyuser, noADB/noFASTBOOT. Do not
+  rebootoraskforFASTBOOTuntil0099imagesready. User30sreply-or-pause.
+- Mainbranch e7ffadf documents0098BAD/0097rollback; diagnostics patchonly
+  ininput untilvalidated. Oldforkdeletion pendingUSER-ownedhistorybackup.
+
 # ACTIVE — 0099 final local compile/99patch/repo PASS; preparefullCI
 
 - sweet_ufs+sweet_keys compilePASS; finalentry/GPIcheckpoint keyscompilePASS.
