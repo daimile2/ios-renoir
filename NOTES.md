@@ -1,3 +1,32 @@
+# ACTIVE — 0102 report diagnostics local checks PASS; preparing CI (2026-10-23)
+
+- Resumed from uncommitted 0102 patch. Local sweet_keys arm64 object compile
+  PASS; all 102 patches strict application PASS; repository/shell/diff checks
+  PASS. Host build script and workspace-tools copy match. QEMU skipped.
+- bbreport=1 requires bbspi=1 and verified ID5652/CRC plus persisted stage;
+  reads vendor 90-byte payload (99-byte wire transfer), checks CRC/status,
+  logs native 15-bit coordinates at at most 10Hz. NO HID injection.
+- Prior locally named ios-gpio-spi-id-0102-v1 log contains ID proof only;
+  it does not establish report polling success. Current 0102 needs new CI
+  and new distinctly named report image/log before any acceptance claim.
+- User says phone is in TWRP; adb devices currently empty. Leave phone
+  untouched during build. User requests STOP while workflow runs; resume
+  when they report completion. Also stop whenever awaiting their choice
+  with no required independent work; no automated workflow polling.
+- Preserve verified 0101 rollback. Never flash partitions for this test.
+
+# ACTIVE — 0101 GPIO chip ID VERIFIED; 0102 report-only probe in development
+
+- Fresh ../logs/ios-gpio-spi-id-0101-v1.txt: total76263 flush12;
+  A3=56 CRC3438, 9F=52 CRC107e (wire little endian), id5652 CRC1/1.
+  GPIO pinmux/latches restored; user confirmed lockscreen/time/keys normal.
+  Phone now temporary rootTWRP for log retrieval. No HID/touch events yet.
+- Next0102: opt-in bbreport=1, vendor-length90-byte payload, CRC/status
+  checking, native15bit coordinate parser and bounded logging. Keep GPIO
+  pins only after expected ID proof; key-thread10Hz sampling. No HID yet.
+- Preserve0101 archived image as verified rollback; QEMU skipped by user.
+  Historical CI downloads remain user-owned; old fork deletion pending.
+
 # ACTIVE — 0101 GPIOonly CI PASS; images verified; temporaryboot underway
 
 - CI39773009809 SUCCESS at ee48e1e51fc3213f67ea9fe5cc4aea8ffa84e79c,

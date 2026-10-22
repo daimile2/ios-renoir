@@ -53,6 +53,10 @@ if os.environ.get('RENOIR_GPIO_SPI') == '1':
     if any(os.environ.get(k) == '1' for k in ('RENOIR_GPI_PROBE', 'RENOIR_GPI_ALLOC', 'RENOIR_GPI_DMA')) or os.environ.get('RENOIR_GPI_LOCK') in ('1', '2'):
         raise SystemExit('GPIO SPI image must omit GPI options')
     args += ' bbspi=1'
+if os.environ.get('RENOIR_GPIO_REPORT') == '1':
+    if os.environ.get('RENOIR_GPIO_SPI') != '1':
+        raise SystemExit('GPIO report diagnostics require GPIO SPI')
+    args += ' bbreport=1'
 if len(args.encode()) >= 608:
     raise SystemExit('Boot args exceed shim limit')
 Path(sys.argv[1]).write_text(args + '\n')
@@ -82,6 +86,7 @@ d['touch_power_enabled'] = 'renoirpower=1' in d['cmdline']
 d['gpi_smmu_probe_enabled'] = 'renoirgpiprobe=1' in d['cmdline']
 d['gpi_command_allocator_enabled'] = 'renoirgpialloc=1' in d['cmdline']
 d['gpio_spi_id_enabled'] = 'bbspi=1' in d['cmdline']
+d['gpio_report_diagnostics_enabled'] = 'bbreport=1' in d['cmdline']
 d['gpi_spi_id_trial_enabled'] = 'gpilock=2' in d['cmdline']
 d['gpi_lock_unlock_enabled'] = any(a in d['cmdline'] for a in ('gpilock=1', 'gpilock=2'))
 d['gpi_dma_nop_enabled'] = 'renoirgpidma=1' in d['cmdline']
