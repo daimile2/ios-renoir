@@ -1,3 +1,15 @@
+# ACTIVE — 0102 CI PASS; report image verified; temporary boot (2026-10-23)
+
+- CI39813286479 SUCCESS at e0efbf7a3c0a0ec5bdb21941d34f32c7d1f18ead;
+  log ../logs/ci-39813286479.txt confirms explicit0102 patch application.
+  Downloaded kernel SHA256SUMS PASS. Image unpack/payload/stockDTB PASS.
+- MAIN ../artifacts/xnu-renoir-0102/phone-gpio-report-v1/shim-boot.img;
+  exact SHA/args in manifest. GPIO ID+report enabled, all GPI flags absent.
+  NO HID. Preserve verified0101 rollback. QEMU skipped by user.
+- User reconnected phone; root TWRP adb verified. Proceed temporary boot
+  only, then ask user GUI and touch sampling. Actual report/CRC unknown.
+- Stop when awaiting user response; never poll workflow while waiting.
+
 # ACTIVE — 0102 report diagnostics local checks PASS; preparing CI (2026-10-23)
 
 - Resumed from uncommitted 0102 patch. Local sweet_keys arm64 object compile
