@@ -1,3 +1,18 @@
+# ACTIVE — 0099 CI PASS; images verified; temporaryboot in progress
+
+- CI39767320682 SUCCESS hardware/sourcef01c7286e861feae9fc7e387028f764b138a549c.
+  Explicit0099apply verified ../logs/ci-39767320682.txt. KernelSHA
+  b285f41e7f833e4335a3db76e9a9b198da5f212f27f398e971205299a3d97099.
+- MAIN ../artifacts/xnu-renoir-0099/phone-spi-checkpoint-v1/shim-boot.img
+  80bf0e3a12b9632bf1f216356d3b452f74152f71c0e0deff8f738c102a147526.
+- Samekernel noSPI mode1 ../artifacts/xnu-renoir-0099/phone-lock-fallback-v1/shim-boot.img
+  ca345426208c33da0343dfb9843611e91408b4d16343e6862e14180f4c7c4042.
+  Bothargs602 inclNUL, unpackpayload/stockDTBcmpPASS. shim/out holdsfallback.
+- UsermanualFASTBOOTconfirmed, temporaryboot archivedMAIN nowstarted;
+  ../logs/fastboot-spi-checkpoint-0099-v1.log. NoGUI/resultknownyet.
+- Historicalbackup stillUSER-owned, oldfork notdeleted; donotinterfere.
+  QEMUskippedbyuser; reply-or-pause30s whenasked persists.
+
 # ACTIVE — 0099 CI39767320682 queued; phone0097GUI confirmed, keepitthere
 
 - Finalsourcef01c7286e861feae9fc7e387028f764b138a549c onrenoir/input.
