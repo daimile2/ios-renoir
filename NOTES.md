@@ -1,3 +1,24 @@
+# ACTIVE — 0100 static0 allocation/LOCK VERIFIED but reboot persists; 0101 GPIO ID
+
+- User0100reboot->FASTBOOT->temporaryTWRP/rootADB. PhoneNOWrootTWRP.
+  ../logs/ios-static-spi-0100-reboot-v1.txt12384bytesflush34 FRESH.
+  Route group0mask1 confirmed idle cfg0/scratch0; EV/TX/RX ALLOCfresh1,
+  STARTfresh/state2; NOP/LOCK100us valid. FullSE/pinsetup readbackPASS.
+  Lastmarker BEFOREfirstA3pairedDB. Staticroutecorrection valid perDT,
+  but NOTsufficienttofixreboot. NoSPIID/FAR/faultPC yet.
+- 0101 implements bbspi=1 GPIOmode0 ID-only transport inspired by pinned
+  HackiOS8e611870 GPIO pattern, usingrenoir20MISO/21MOSI/22CLK/23CS.
+  Strictidleinput/qup10/OE guard; CS high/CLKlowbeforeOE, 1usphase delays,
+  A3/9F eachmax3reads/CRC/status, raw10byteRXlogs, restorecfg/latches.
+  Nochipwrites/firmwareupload/HID. Separatebootoption skipsGPI/SMMUprobe/
+  commandsentirely; buildscript rejectscombinedGPIO+GPI options.
+- Also addspost-pairedDB, postDMAresult, preRESET checkpoints forGSI
+  diagnostics, sofutureGSItestdoesnotloseerrorsduringcleanup. Descriptor
+  contents/pair-doorbelltimingunchanged. MainGPIOimage doesnotrunGSI.
+- LocalkeyscompilePASS; nextall101patchstrict/repo/shell/fullCI.
+  QEMUskippedperuser. Hostscriptmirroredtoworkspace-tools.
+- Historicalbackup USER-owned; oldforkNOTdeletedpendingcompletion.
+
 # ACTIVE — 0100 CI PASS; staticSPI MAIN/fallback verified; temporaryboot underway
 
 - CI39769781549 SUCCESS atbbc7c8ab878c9d84f1e574a61c63938da134bf49;

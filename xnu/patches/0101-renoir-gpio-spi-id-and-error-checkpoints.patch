@@ -1,0 +1,150 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -237,13 +237,44 @@
+ 	return false;
+ }
+ 
++/* Mode0 GPIO SPI: pin order matches Qualcomm SE IO0..3 and the
++ * HackiOS8e611870 GPIO transport pattern, with renoir's pins20..23.
++ * Delays bound the clock below the DT6MHz ceiling. No firmware writes. */
+ static bool
+-renoir_fts_reg(vm_offset_t se, uint8_t reg, uint8_t *value)
++renoir_gpio_spi_xfer(vm_offset_t tlmm,const uint8_t *tx,uint8_t *rx,unsigned len)
++{
++	if(!len || len>16) return false;
++	renoir_spi_wr(tlmm,23*0x1000+4,0); /* CS active low */
++	delay(2);
++	for(unsigned i=0;i<len;++i) {
++		uint8_t in=0;
++		for(int bit=7;bit>=0;--bit) {
++			renoir_spi_wr(tlmm,21*0x1000+4,(tx[i]&(1u<<bit))?2:0);
++			delay(1);
++			renoir_spi_wr(tlmm,22*0x1000+4,2);
++			delay(1);
++			in=(uint8_t)((in<<1)|(keys_rd(tlmm,20*0x1000+4)&1));
++			renoir_spi_wr(tlmm,22*0x1000+4,0);
++			delay(1);
++		}
++		rx[i]=in;
++	}
++	delay(2);
++	renoir_spi_wr(tlmm,23*0x1000+4,2);
++	return true;
++}
++
++static bool
++renoir_fts_reg(vm_offset_t se, uint8_t reg, uint8_t *value, bool gpio)
+ {
+ 	uint8_t tx[10] = {reg, 0xa0, 0, 1, 0, 0, 0, 0, 0, 0}, rx[10] = {0};
+ 	for (unsigned attempt = 0; attempt < 3; ++attempt) {
+ 		delay(150);
+-		if (!renoir_spi_xfer(se, tx, rx, sizeof(tx))) return false;
++		bool transferred=gpio?renoir_gpio_spi_xfer(se,tx,rx,sizeof(tx)):
++		    renoir_spi_xfer(se,tx,rx,sizeof(tx));
++		if(!transferred) return false;
++		if(gpio) printf("RENOIR GPIO SPI RAW: reg=%#x attempt=%u rx=%02x/%02x/%02x/%02x/%02x/%02x/%02x/%02x/%02x/%02x\n",
++		    reg,attempt,rx[0],rx[1],rx[2],rx[3],rx[4],rx[5],rx[6],rx[7],rx[8],rx[9]);
+ 		uint16_t crc = 0xffff;
+ 		crc ^= rx[7];
+ 		for (unsigned bit = 0; bit < 8; ++bit)
+@@ -610,6 +641,7 @@
+ 		delay(150);
+ 		renoir_spi_wr(regs,base+0x2000,0x101000+16*(slot+3));
+ 		renoir_spi_wr(regs,base+0x2008,0x102000+16*(trial+1));
++		if(!renoir_spi_stage("SPI paired doorbells returned before poll",trial)) return -1;
+ 		uint32_t expected=0x100000+16*(4+trial*2),rp=0;unsigned us;
+ 		for(us=0;us<250000;us+=100) {
+ 			rp=keys_rd(regs,base+0x1010);
+@@ -631,6 +663,7 @@
+ 		for(unsigned j=64;j<1024;++j) if(event[j]!=0xa5a5a5a5) good=false;
+ 		if(keys_rd(renoir_dma_cb,0x58)&RENOIR_SMMU_FSR_FAULT) good=false;
+ 		printf("RENOIR GSI SPI DMA: reg=%#x complete=%d wait-us=%u rp=%#x FSR=%#x MIRQ=%#x SIRQ=%#x state=%#x rx=%02x/%02x/%02x/%02x/%02x/%02x/%02x/%02x/%02x/%02x\n",out[0],good,us,rp,keys_rd(renoir_dma_cb,0x58),keys_rd(renoir_spi_trial_se,0x610),keys_rd(renoir_spi_trial_se,0x640),keys_rd(renoir_spi_trial_se,0x40),in[0],in[1],in[2],in[3],in[4],in[5],in[6],in[7],in[8],in[9]);
++		if(!renoir_spi_stage("SPI DMA result before cleanup",trial)) return -1;
+ 		if(!good) return -1;
+ 		uint16_t crc=0xffff^in[7];
+ 		for(unsigned b=0;b<8;++b) crc=(crc&1)?(crc>>1)^0x8408:crc>>1;
+@@ -745,6 +778,7 @@
+ 	    keys_rd(renoir_dma_smmu,0x54),keys_rd(renoir_dma_smmu,0x58));
+ 	/* LE-VM skips STOP. Reset both channels before release; never free
+ 	 * DMA memory or unmap a potentially in-flight transaction. */
++	if(lock_test==2 && !renoir_spi_stage("GSI before paired RESET",0)) return -1;
+ 	bool reset0=renoir_gpi_command(regs,base,0,false,9);
+ 	bool reset1=renoir_gpi_command(regs,base,1,false,9);
+ 	if(!reset0 || !reset1) {
+@@ -865,11 +899,51 @@
+ }
+ 
+ static void
++renoir_gpio_spi_id(vm_offset_t tlmm)
++{
++	uint32_t cfg[4],io[4];
++	for(unsigned i=0;i<4;++i) {
++		cfg[i]=keys_rd(tlmm,(20+i)*0x1000);io[i]=keys_rd(tlmm,(20+i)*0x1000+4)&2;
++		/* Avoid overriding another GPIO output or alternate function. */
++		if((cfg[i]&0x200) || (cfg[i]&0x3c)>4) {
++			printf("RENOIR GPIO SPI: pin%u cfg=%#x not idle input/qup10; withheld\n",20+i,cfg[i]);return;
++		}
++	}
++	if(!renoir_spi_stage("GPIO SPI before configuring pins20..23",0)) return;
++	/* CS high and clock low before enabling output, avoiding a false edge. */
++	renoir_spi_wr(tlmm,23*0x1000+4,2);
++	renoir_spi_wr(tlmm,22*0x1000+4,0);
++	renoir_spi_wr(tlmm,21*0x1000+4,0);
++	/* MISO20=input/2mA; MOSI21 CLK22 CS23=outputs/6mA; pullnone. */
++	renoir_spi_wr(tlmm,20*0x1000,cfg[0]&~0x3ffu);
++	for(unsigned i=1;i<4;++i) renoir_spi_wr(tlmm,(20+i)*0x1000,(cfg[i]&~0x3ffu)|0x280u);
++	bool pins=(keys_rd(tlmm,20*0x1000)&0x3ff)==0;
++	for(unsigned i=1;i<4;++i) if((keys_rd(tlmm,(20+i)*0x1000)&0x3ff)!=0x280) pins=false;
++	printf("RENOIR GPIO SPI: pins-readback=%d MISO20 MOSI21 CLK22 CS23 mode0 delay1us/phase; no GPI or SMMU commands\n",pins);
++	bool checkpoint=renoir_spi_stage("GPIO SPI ready before ID reads",0);
++	uint8_t hi=0,lo=0;bool a=false,b=false;
++	if(pins && checkpoint) {
++		a=renoir_fts_reg(tlmm,0xa3,&hi,true);
++		b=renoir_fts_reg(tlmm,0x9f,&lo,true);
++	}
++	printf("RENOIR GPIO SPI ID: id=%02x%02x valid-crc=%d/%d expected5652=%d; NO touch events\n",hi,lo,a,b,a&&b&&hi==0x56&&lo==0x52);
++	(void)renoir_spi_stage("GPIO SPI ID result before restore",0);
++	/* Disconnect output before restoring its saved latch; CS stays high
++	 * until its OE is cleared. All saved configurations had OE clear. */
++	renoir_spi_wr(tlmm,23*0x1000+4,2);
++	for(unsigned i=0;i<4;++i) renoir_spi_wr(tlmm,(20+i)*0x1000,cfg[i]);
++	for(unsigned i=0;i<4;++i) renoir_spi_wr(tlmm,(20+i)*0x1000+4,io[i]);
++	printf("RENOIR GPIO SPI: pinmux and output latches restored\n");
++	(void)renoir_spi_stage("GPIO SPI restore complete",0);
++}
++
++static void
+ renoir_spi_id(vm_offset_t se)
+ {
+-	int trial_mode=0;
++	int trial_mode=0,gpio_spi=0;
+ 	(void)PE_parse_boot_argn("gpilock",&trial_mode,sizeof(trial_mode));
+-	if(trial_mode==2 && !renoir_spi_stage("SPI power/probe entry",0)) return;
++	(void)PE_parse_boot_argn("bbspi",&gpio_spi,sizeof(gpio_spi));
++	if((trial_mode==2 || gpio_spi==1) && !renoir_spi_stage("SPI power/probe entry",0)) return;
+ 	vm_offset_t tlmm = ml_io_map(0x0f100000u, 0x20000);
+ 	vm_offset_t gcc = ml_io_map(0x00100000u, 0x53000);
+ 	if (!tlmm || !gcc) return;
+@@ -913,6 +987,13 @@
+ 		delay(200000);
+ 		printf("RENOIR SPI: powered reset release cfg=%#x io=%#x\n",
+ 		    keys_rd(tlmm,30*0x1000),keys_rd(tlmm,30*0x1000+4));
++	}
++	if(gpio_spi==1) {
++		if(power && !(keys_rd(se,0x40)&0x1001) && (keys_rd(tlmm,30*0x1000+4)&1))
++			renoir_gpio_spi_id(tlmm);
++		else printf("RENOIR GPIO SPI: power/reset/SE-idle guard failed\n");
++		renoir_spi_wr(gcc,0x52008,startup_vote);
++		return; /* GPIO transport deliberately skips GPI probe/allocation. */
+ 	}
+ 	int gpi_probe = 0;
+ 	(void)PE_parse_boot_argn("renoirgpiprobe", &gpi_probe, sizeof(gpi_probe));
+@@ -958,7 +1039,7 @@
+ 	renoir_spi_wr(se,0x260,0x7f8fe); renoir_spi_wr(se,0x264,0xffefe);
+ 	renoir_spi_wr(se,0x284,0x7f8fe); renoir_spi_wr(se,0x288,0xffefe);
+ 	uint8_t hi=0,lo=0;
+-	bool ok=renoir_fts_reg(se,0xa3,&hi) && renoir_fts_reg(se,0x9f,&lo);
++	bool ok=renoir_fts_reg(se,0xa3,&hi,false) && renoir_fts_reg(se,0x9f,&lo,false);
+ 	printf("RENOIR SPI: FTS chip-id=%#x%02x valid=%d expected=0x5652; NO touch events\n",hi,lo,ok && hi==0x56 && lo==0x52);
+ 	if (keys_rd(se,0x40)&1) {
+ 		printf("RENOIR SPI: abort still busy, configuration retained for diagnosis\n");
