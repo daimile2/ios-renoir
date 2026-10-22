@@ -1,3 +1,28 @@
+# ACTIVE — 0097 temporaryboot OKAY; user4 still starting, PAUSED
+
+- User says phone FASTBOOT; confirmed and temporaryboot archivedMAIN.
+  Sending/Booting OKAY ../logs/fastboot-gpi-lock-0097-v1.log.
+- Asked startupstatus; user4 = still starting / pause and wait. PAUSED,
+  no moredevice/development until feedback. No actual0097 eventlogs yet.
+- CI39646826799 SUCCESS hardwarec565ffad251999c81ab95d7e41187d03d4d53dad,
+  explicit0097 apply. KernelSHA
+  fcef12d1d38b584507d26235b18f3f0e4be339535b8a891ba2ac312ad862499d.
+- MAIN ../artifacts/xnu-renoir-0097/phone-gpi-lock-v1/shim-boot.img
+  bfe2f88ca58d76564734825a8101a934d3994ed8a990dc011229c5e01159f9bd,
+  args602 inclNUL. Samekernel noLOCK fallbackphone-gpi-nop-fallback-v1
+  a343c571113295324d6cc1fe38b4aba4a5989ea924f0b840f0f3db3aa26b06a4,
+  args592. Both unpack payload/stockDTB cmp pass; shim/out holdsfallback.
+- QEMU skipped by user. NormalGUI / LOCKcompletion not yet verified.
+- New user requested reference https://github.com/oosexgang/hackios-xnu-kernel
+  cloned ../toolchain/hackios-xnu-kernel-reference, fixedHEAD
+  8e61187098f2c26c5daee8f9f72b6416aa64b9ab, sparse docs/xnu/common.
+  IMPORTANT redwood_goodix.c also has FocalTech FT3680, FTSa0/CRC framing
+  and GPIO bitbang fallback, contrary to README Goodix-only impression.
+  Potential alternate transport for ourFT3658U; must useourpins/protocol,
+  do NOT copy firmware-upload routine (different chip/PRAM assumptions).
+  No code from it integrated yet. GPU/SMP/battery available for review;
+  GPU needs userland Mesa changes in separate hackios-xnu-userland repo.
+
 # ACTIVE — 0097 local checks PASS; CI39646826799 running; phone rootTWRP
 
 - Hardware sourcec565ffad251999c81ab95d7e41187d03d4d53dad.
