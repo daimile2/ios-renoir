@@ -1,3 +1,23 @@
+# ACTIVE — 0099 freshcheckpoints VERIFIED; static-GPI bug found; 0100 fix
+
+- Userreports0099reboots -> FASTBOOT -> temporaryTWRP/rootADB.
+  ../logs/ios-spi-checkpoint-0099-reboot-v1.txt12208bytes flush33 FRESH.
+  Synchronouslogcheckpoint WORKS. NOP/LOCK100us valid, SMMUfaults0.
+  ALLnewSEsave-reads/TLMM20..23writes/SEsetupwrites survive; setup
+  readback1 mode1 eventsf. Lastpersistedmarker BEFORE SPIA3 pairedDB slot2.
+  NoactualID/eventafterSPI. FaultPC unknown, reset nearfirstSPItransaction.
+- CONFIRMEDconfigurationbug in our implementation: DT SPI dmas fifthcell2
+  is STATIC_GPII_BMSK=2 =>true (pinnedgpi.c gpi_of_dma_xlate lines2891..96),
+  gpi_find_avail_gpii selects static-mask1=>group0. We incorrectly used
+  dynamic1..6 for touch. NOP/LOCKgroup1 success didnotproveSEroutevalid.
+  Thisisa source-levelmismatch, NOTyetprovenresetrootcause.
+- 0100 ONLYchangesgroupselection for gpilock2 toDTstatic0, sameidle/
+  ownership/freshcommandguards; nofallbacktodynamicif0busy. Mode1keeps
+  validateddynamic1..6; noaccess7..11. Allprotocol/pairDBtiming unchanged.
+- PhonecurrentlyrootTWRP; stop0099MAIN/0098MAIN. Wait0100checks/fullCI.
+  0097knownGUIrollbackavailable. QEMUskippedperuser.
+- HistoricalCIbackup user-owned; oldforkNOTdeleted awaitingtheircompletion.
+
 # ACTIVE — 0099 CI PASS; images verified; temporaryboot in progress
 
 - CI39767320682 SUCCESS hardware/sourcef01c7286e861feae9fc7e387028f764b138a549c.

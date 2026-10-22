@@ -1,0 +1,61 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -372,7 +372,7 @@
+ 	/* Only DT assigned groups0..6 are readable in this environment.
+ 	 * Hardware capacity12 does not grant access to groups7..11:0093
+ 	 * faulted on group7 context read (external abort), before SMMU writes.
+-	 * Observe static0, never allocate it; dynamic mask remains1..6. */
++	 * Caller selects DT static0 for SPI or dynamic1..6 for diagnostics. */
+ 	printf("RENOIR DMA MAP: inventory only readable DT groups0..6; groups7..11 not accessed\n");
+ 	for(unsigned g=0;g<7;++g) {
+ 		uint32_t off=0x10000+0x4000*g;
+@@ -762,9 +762,17 @@
+ 	int enabled=0;
+ 	(void)PE_parse_boot_argn("renoirgpialloc",&enabled,sizeof(enabled));
+ 	if(!enabled) return;
++	/* Live touch DMA fifth cell2 means STATIC_GPII bit1, not priority2.
++	 * Pinned Xiaomi gpi_of_dma_xlate selects static-mask1 => group0.
++	 * Keep prior dynamic1..6 path only for standalone mode1 diagnostics. */
++	int trial_mode=0;
++	(void)PE_parse_boot_argn("gpilock",&trial_mode,sizeof(trial_mode));
++	unsigned first=trial_mode==2?0u:1u,last=trial_mode==2?0u:6u;
++	printf("RENOIR GPI ROUTE: trial=%d fifth-cell2-static=%d mask=%#x groups=%u..%u SE2 SPI\n",
++	    trial_mode,trial_mode==2,trial_mode==2?1:0x7e,first,last);
+ 	unsigned group;
+ 	uint32_t base=0;
+-	for(group=1;group<=6;++group) {
++	for(group=first;group<=last;++group) {
+ 		base=0x10000+group*0x4000;
+ 		uint32_t tx=keys_rd(regs,base), rx=keys_rd(regs,base+0x80);
+ 		uint32_t ev=keys_rd(regs,base+0x1000);
+@@ -773,8 +781,9 @@
+ 		uint32_t output=keys_rd(regs,base+0x3088);
+ 		/* Unallocated ring pointers and scratch1..3 are undefined, not
+ 		 * ownership markers. 0090 incorrectly required them all zero.
+-		 * DT grants dynamic groups1..6 to this EE. State0 plus no protocol
+-		 * association/pending IRQ permits an ALLOCATE ownership request;
++		 * DT grants static0 and dynamic1..6 to this EE. Touch cell4 STATIC
++		 * selects only0. State0 plus no protocol association/pending IRQ
++		 * permits an ALLOCATE ownership request;
+ 		 * only fresh command completion can establish that it succeeded. */
+ 		bool idle=tx!=0xffffffffu && rx!=0xffffffffu && ev!=0xffffffffu &&
+ 		    !(((tx|rx|ev)>>20)&15) && !(tx&7) && !(rx&7) && !(ev&15) &&
+@@ -783,8 +792,8 @@
+ 		    group,idle,tx,rx,ev,scratch0,scratch1,output);
+ 		if(idle) break;
+ 	}
+-	if(group>6) {
+-		printf("RENOIR GPI ALLOC: no idle unassociated dynamic group; unchanged\n");
++	if(group>last) {
++		printf("RENOIR GPI ALLOC: no idle unassociated group in requested mask; unchanged\n");
+ 		return;
+ 	}
+ 	printf("RENOIR GPI ALLOC: group=%u idle/unassociated; request ownership, output IRQ masked; DMA test requires separate opt-in\n",group);
+@@ -793,6 +802,7 @@
+ 	 * while polling source completion without a GIC handler.
+ 	 * Source masks collect command status.
+ 	 * No MSI routing, global IRQ, shared GPI reset or firmware writes. */
++	if(trial_mode==2 && !renoir_spi_stage("static0 selected before mask/ALLOC writes",base)) return;
+ 	uint32_t output=keys_rd(regs,base+0x3088);
+ 	renoir_spi_wr(regs,base+0x3088,0);
+ 	if(keys_rd(regs,base+0x3088)!=0) {
