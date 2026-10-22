@@ -1,3 +1,16 @@
+# ACTIVE — 0100 CI39769781549 running; phone rootTWRP
+
+- Hardware/sourcebbc7c8ab878c9d84f1e574a61c63938da134bf49.
+  LocalkeyscompilePASS, all100patchstrictapplicationPASS, repo/diffPASS.
+  CI39769781549 in_progress. QEMUskippedbyuser.
+- Static0selectiononlyforSPIgpilock2 pluspersistedmarker beforefirstgroup0
+  mask/ALLOCwrite; sameidle/freshcommandguards, mode1dynamicpath unchanged.
+  Do notclaimresetfixeduntilactualphoneevent/CRC.
+- Phone rootTWRP from0099logread, nofurtheruseractionneededuntilimagesready.
+  NextCI/downloadviaHTTPproxy127.0.0.1:12334/buildmain+mode1fallback,
+  adbbootloader/temporaryMAINboot; inspectuserfeedback thenrootTWRPlogs.
+- Oldforkstillnotdeleted, historicalbackupUSER-owned. User30sreply/pause.
+
 # ACTIVE — 0099 freshcheckpoints VERIFIED; static-GPI bug found; 0100 fix
 
 - Userreports0099reboots -> FASTBOOT -> temporaryTWRP/rootADB.
