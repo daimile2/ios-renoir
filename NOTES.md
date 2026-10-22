@@ -1,3 +1,20 @@
+# ACTIVE — independent repository migration prepared; old0098 CI now running
+
+- User explicitly requests independentrepo andoldforkdeletion; refreshed
+  gh credentials include delete_repo (verified, no tokens copied).
+- Oldremote daimile2/ios-renoir forktrue parentdipa-studio/ios-sweet.
+  Gitbundle allrefs verified ../artifacts/repository-migration-20261022/source-all.bundle,
+  SHA995a40d3157fa0c8b833fa089a1c93e6ff47e5de26489a35b84f892cd9c0627e.
+  Metadata/branches/Actions metadata saved same directory.
+- PreparedrenoirREADME, preservedupstreamREADME, copiedprojectdocs into
+  docs/renoir andtrackedhostscripts into workspace-tools (install tosibling
+  tools directory perREADME). Private device serial scan passed.
+- Planrenameoldfork ios-renoir-fork-archive-20261022, createindependent
+  sameoriginalname, pushhistory/branches/main=currentrenoirwork, verify
+  refs/isForkfalse, then deleteoldfork only AFTER oldCIlogs/artifacts saved.
+- 0098 oldrun39761164996 attempt2 nowin_progress. Preservewhilebuilding.
+  Migration doesnot itselfguaranteequeuefix. Phone remainsrootTWRP.
+
 # ACTIVE — 0098 attempt2 stillQUEUED; macos14 retirement capacity risk
 
 - User-requested cancel/rerun completed, same39761164996 attempt2,

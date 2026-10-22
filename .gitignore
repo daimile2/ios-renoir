@@ -8,3 +8,13 @@ shim/out/
 xnu/out/
 xnu/out-*/
 __pycache__/
+
+# Local workspace artifacts and proprietary inputs
+artifacts/
+logs/
+downloads/
+toolchain/
+*.ipsw
+*.dmg
+*.img
+*.simg
