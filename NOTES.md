@@ -1,3 +1,20 @@
+# ACTIVE — 0101 GPIOonly CI PASS; images verified; temporaryboot underway
+
+- CI39773009809 SUCCESS at ee48e1e51fc3213f67ea9fe5cc4aea8ffa84e79c,
+  explicit0101apply ../logs/ci-39773009809.txt. KernelSHA
+  3545025a05ba0bc79e0f2f5d16b4ba2aa0e667cc1b5fcaa9fc18006f4967f9f5.
+- MAIN ../artifacts/xnu-renoir-0101/phone-gpio-spi-id-v1/shim-boot.img
+  de00ea48ecf872dc96312ca64b4bcdac36804fd7d77078bd5c3452dafecf8b8c,
+  args551inclNUL, bbspi1, noGPIprobe/ALLOC/DMA/lock flags; manifestasserted.
+- Fallback ../artifacts/xnu-renoir-0101/phone-dynamic-lock-fallback-v1/shim-boot.img
+  f408b80daf337ce33d70e8e768c03d34924949b99bf889fae7a76866af1f5ba6,
+  args602, GPIOdisabled/gpilock1. Bothunpackpayload/stockDTBcmpPASS.
+  shim/out currentlyfallback; bootarchivedMAIN only.
+- PhoneconfirmedrootTWRP, adbbootloader+MAIN bootstarted;
+  ../logs/fastboot-gpio-spi-id-0101-v1.log. NoGUI/ID/CRC resultyet.
+- QEMUskippedbyuser. Askfeedbackafterstartup, noresponse30s=>pause.
+  HistoricalbackupUSER-owned; oldforkdeleteawaitstheircompletion.
+
 # ACTIVE — 0101 CI39773009809 running; phone rootTWRP
 
 - Sourceee48e1e51fc3213f67ea9fe5cc4aea8ffa84e79c. LocalkeyscompilePASS,
