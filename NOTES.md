@@ -1,3 +1,19 @@
+# ACTIVE — 0101 CI39773009809 running; phone rootTWRP
+
+- Sourceee48e1e51fc3213f67ea9fe5cc4aea8ffa84e79c. LocalkeyscompilePASS,
+  strictall101patchapplicationPASS, repo/shell/diffPASS. QEMUskipped.
+- 0101 MAIN mustGPIOONLY: RENOIR_SPI_ID=1 RENOIR_SHANGHAI=1
+  RENOIR_TOUCH_POWER=1 RENOIR_GPIO_SPI=1; omit/set0 ALLRENOIR_GPI_*.
+  Mainbbspi1, noGPIprobe/ALLOC/DMA/SMMUexperiment. Buildsamekernelmode1
+  fallbackwithGPIO=0 plusoldGPIflagsforstandaloneNOP/LOCK ifneeded.
+- NextwaitCI, downloadnewkernel/logs viaHTTPproxy127.0.0.1:12334,
+  verifySHA/unpack, rootTWRP adbbootloader andtemporaryarchivedGPIOmain.
+  NoIDorGPIOtouchsuccessyet; do notinferfromcompiler/GUI alone.
+- RebootingGSIimages0098..0100 remainBADformainSPItest; static0assignment
+  confirmedfixedbutrebootnotresolved. See0100freshlogflush34.
+- HistoricalCIbackupUSER-owned; oldforkdeletependingcompletion, nointerference.
+  User30sresponsepause rule persists wheneverasked.
+
 # ACTIVE — 0100 static0 allocation/LOCK VERIFIED but reboot persists; 0101 GPIO ID
 
 - User0100reboot->FASTBOOT->temporaryTWRP/rootADB. PhoneNOWrootTWRP.
