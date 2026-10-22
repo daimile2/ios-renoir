@@ -1,3 +1,18 @@
+# ACTIVE — 0098 attempt2 stillQUEUED; macos14 retirement capacity risk
+
+- User-requested cancel/rerun completed, same39761164996 attempt2,
+  source7d28836cf5625d8e8bf758289a7ffa9a2f3f8d77. Still no runner.
+- OfficialGitHubStatus APIActionsoperational/noincidents atcheck.
+- Official2026-10-01 announcement macos14 retires2026-11-02, capacity
+  mayreduce/queuesincrease. Current2026-10-22 isnotlistedbrownout.
+  https://github.blog/changelog/2026-10-01-github-actions-macos-14-runner-image-retirement/
+  Plausiblecapacitycause, notconfirmedthisjobrootcause.
+- Existingworkflow pinsmacos14 forXcode15 iig/XNU8796ABI. Do not blindly
+  changemacos15/newiig; migrationneedsvalidatedIORPCgeneratorcompatibility.
+- Next inspect attempt2, waitsuccess/download/buildphone0098 main mode2
+  andmode1fallback, then temporaryboot. No0098kernel/imageyet.
+  Phone rootTWRP, user GUI0097 normal. QEMU skip persists.
+
 # ACTIVE — 0098 CI39761164996 attempt2 rerun requested by user
 
 - Attempt1 remained queued without runner; cancelled on explicit user
