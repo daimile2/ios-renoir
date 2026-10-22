@@ -1,3 +1,13 @@
+# ACTIVE — 0098 CI39761164996 attempt2 rerun requested by user
+
+- Attempt1 remained queued without runner; cancelled on explicit user
+  suggestion, confirmedcancelled, rerun submitted successfully.
+- Same runID39761164996 attempt2 statusqueued, exacthardwarecommit
+  7d28836cf5625d8e8bf758289a7ffa9a2f3f8d77. No source/workflow/toolchain
+  parameterchange. ../logs/ci-watch-39761164996-attempt2.log.
+- Phone remains rootTWRP, no0098image/phonebootyet. Wait fullCI before
+  building andtemporaryboot. QEMU skippedperuser.
+
 # ACTIVE — 0098 local checks PASS; CI39761164996 queued; phone rootTWRP
 
 - Hardware source7d28836cf5625d8e8bf758289a7ffa9a2f3f8d77.
