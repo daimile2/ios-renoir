@@ -1,3 +1,38 @@
+# ACTIVE — 0099 final local compile/99patch/repo PASS; preparefullCI
+
+- sweet_ufs+sweet_keys compilePASS; finalentry/GPIcheckpoint keyscompilePASS.
+  Strict99patchapplication PASS; nextcommitpatchanddispatchCI.
+- User0097GUIconfirmed, explicitlytoldstaylockscreenuntil0099ready.
+- 0099 markers includeSPIentry BEFOREpower andGPIentry AFTERpower,
+  mode2preSTART,afterLOCK,SEsave-read/clockselect,eachnewsetupwrite,
+  pairedSPIdoorbells,restorewrites. Eachsyncs reservedlogtail beforeproceeding.
+- No resetrootcauseclaimed; actual0099checkpoint IO/hardware resultpending.
+  Newloggeruses sharedflushed/seq underexistingUFSlock, matches2*logsizeguard.
+- Root/docs nowmark0098BAD and0097rollback; QEMU skippedbyuser.
+
+# ACTIVE — 0098 REBOOT regression; 0097 rollback GUI confirmed; 0099 diagnostics
+
+- Userreports0098 repeatedlyreboots shortlyaftertouchpowererrno0 screen.
+  TheyenteredFASTBOOT. TemporaryTWRP/rootADB, pulled
+  ../logs/ios-gsi-spi-id-0098-reboot-v1.txt134853bytesflush11: EXACTSTALE0097,
+  includingold"no SPI payload or pinmux writes". No0098faultPC known.
+- Temporarilybooted known0097 MAIN; Sending/BootingOKAY
+  ../logs/fastboot-rollback-0097-after-0098.log. Userconfirms lockscreen.
+  Phone NOW0097lockscreen; tolduser remainthere until0099ready.
+- 0098main isBAD forcurrenthardware, noSPIIDsuccess. Do NOTbootagain.
+  PotentialnewSE/TLMMaccess reset, no provenlocation. Powererrno0 isNOT
+  provenrootcause. Both0098 attempts are sameimage; stoprepeating.
+- 0099 diagnostics addssynchronous sweet_log_checkpoint usingexisting
+  logtailwrite/sync algorithm, shareslock+flushed/seq withperiodicwriter.
+  Explicitmarkers beforeSPInewreads/writes/pairedDBs/restore; ifcheckpoint
+  cannotpersist, withholdtrial. Logguard matchesexisting2*logsize bound.
+  NoSPIprotocol/address/timingguess changes; overheadmayaffectobservability.
+- Twofiles localcompilepreliminaryPASS; finalread/restoremarkers andguard
+  edits requirefinalcompile/99patch/repo/fullCI. QEMUskippedperuser.
+- Repoindependent migrationvalid/newCI#1PASS. OldforkNOTdeleted, historical
+  backup nowUSER-owned, nohistoricaldownloadworkersshouldberestarted.
+  Gitconfiguredproxiesremoved; useenvlocalhost127.0.0.1:12334 fordownloads.
+
 # ACTIVE — 0098 temporaryboot RETRY2 OKAY; screen/result pending
 
 - User explicitly requests another temporaryboot. ConfirmedphoneFASTBOOT,

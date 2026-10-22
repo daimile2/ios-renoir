@@ -48,7 +48,8 @@ TWRP的ADB可能需要30–100秒；不要格式化Data或刷入recovery。脚�
 | 0095 | context/SID配置读回及TX/RX启动通过；把FSR格式位误当fault，NOP轮询立即退出，尚无有效完成事件 |
 | 0096 | NOP真实DMA完成：100µs，有效event、guard1、faults0，复位与释放通过 |
 | 0097 | NOP/LOCK/UNLOCK均100µs，有效事件、guard1/faults0及复位释放通过 |
-| 0098 | 新独立仓库CI #1成功，GSI SPI读ID镜像已构建，真机结果待验 |
+| 0098 | CI成功但真机反复重启；日志未落盘，已回退0097，勿继续启动主测试镜像 |
+| 0099开发中 | 同步日志检查点，用于定位新增SPI访问导致的重启；尚未上机 |
 
 最新已读日志：`logs/ios-gpi-lock-0097-v1.txt`。SMMU有82个空闲SMR，未引用context的寄存器有残留值；不能以全零认定归属。ID0_ATOSNS=1表示不支持ATS翻译测试，不能使用ATS1PR/PAR。0092未提交DMA；0093新增独立开关测试专用映射与NOP，成功与否仍须真机日志。芯片ID、坐标与HID触控尚未打通。
 
