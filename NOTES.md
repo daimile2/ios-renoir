@@ -1,3 +1,16 @@
+# ACTIVE — 0098 temporaryboot RETRY2 OKAY; screen/result pending
+
+- User explicitly requests another temporaryboot. ConfirmedphoneFASTBOOT,
+  booted samearchivedMAIN ba48bcf317142878131231ec5b7adb1a7ed3ce3b67512bf1c2d48f6fc338bcb9.
+  Sending/BootingOKAY ../logs/fastboot-gsi-spi-id-0098-v1-retry2.log.
+- No reasonknownforpreviousboot/status, do not inferpanic or success.
+  Nowphone0098candidate, waitscreenfeedback thenmanualFASTBOOT/rootTWRP
+  andpull ../logs/ios-gsi-spi-id-0098-v1.txt foractualID/events/CRC.
+- User30sreply-or-pause rule persists; QEMUskipped. No partitionwrite.
+- HistoricalCIbackup user-owned; oldforkarchive stillNOTdeleted, await
+  theirdownloadcompletion beforeauthorizeddelete. Newrepo independent,
+  newCI#1PASS, source/head2649d1a beforethischeckpoint.
+
 # ACTIVE — 0098 newrepoCI PASS; MAIN/fallback built; historicalbackup USER-owned
 
 - NewrepoCI39763636478 SUCCESS at58e955d92d4a67b0c13df7d6635bae8eef4eb541,
