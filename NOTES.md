@@ -1,3 +1,19 @@
+# ACTIVE — 0100 CI PASS; staticSPI MAIN/fallback verified; temporaryboot underway
+
+- CI39769781549 SUCCESS atbbc7c8ab878c9d84f1e574a61c63938da134bf49;
+  explicit0100apply ../logs/ci-39769781549.txt. KernelSHA
+  292bad619e97c8e764a6c305a60d61aaa7b28e593994f12450c94b40ee9ba578.
+- MAIN ../artifacts/xnu-renoir-0100/phone-static-spi-v1/shim-boot.img
+  6e760b3ad3cf70ed8412a10ee817d0388926acb04dff9ec8538080516e92c3fb.
+- Fallback ../artifacts/xnu-renoir-0100/phone-dynamic-lock-fallback-v1/shim-boot.img
+  11962bb06fc9dd6e424b948128adfffde839cc68da723ee94e8f79c900347b4a.
+  Bothargs602 inclNUL, unpackpayload/stockDTBcmpPASS. shim/out=fallback.
+- PhoneconfirmedrootTWRP; adb rebootbootloader then archivedMAIN boot
+  started. ../logs/fastboot-static-spi-0100-v1.log. Actualstatic0allocation/
+  SPIevents/ID/CRC/GUI unknownyet. NoIDsuccessclaim, nopartitionflash.
+- QEMUskipped, user30sreply-or-pause. HistoricalbackupUSER-owned,
+  oldforkNOTdeletedawaitingcompletebackups.
+
 # ACTIVE — 0100 CI39769781549 running; phone rootTWRP
 
 - Hardware/sourcebbc7c8ab878c9d84f1e574a61c63938da134bf49.
