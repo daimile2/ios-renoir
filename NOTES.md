@@ -1,3 +1,28 @@
+# ACTIVE — 0102 report VERIFIED; 0103 HID local checks PASS (2026-10-23)
+
+- User confirmed0102 GUI normal, completed touch test, returnedFASTBOOT.
+  TemporaryTWRP/rootADB; fresh ../logs/ios-gpio-report-0102-v1.txt,
+  total161227 flush25. 1100polls CRC-good1100 rejected0; down/contact/up,
+  IDs0/1 seen. Raw x274..8635 y493..19160; consistent with 8 subpixels per
+  renoir1080x2400 pixel, NOT redwood10800x24000. Initial CRC-valid allFF
+  count15 is invalid touch data. No0102 HID injected.
+- 0103 follows pinned HackiOS focaltech_report contact tracking + missing-ID
+  release; validates entire frame/count/duplicateID/event/range first;
+  releases on 3 consecutive invalid/transport frames; uses existing
+  sweet_hid_touch(pixel coords), which handles canvas offsets/edge flags.
+  Separate bbhid=1 opt-in requires bbreport=1; GPIO10Hz unchanged.
+- Local sweet_keys arm64 compile PASS; strict103patch application PASS;
+  repository/shell/diff checks PASS. Extracted actual C parser replay:
+  130accepted frames, 1rejected initial allFF, 194HID calls; explicit missing
+  ID, invalid event and coordinate-range checks PASS. Real HID not tested.
+- Next fullCI at renoir/input, then build new phone-gpio-hid-v1 with
+  RENOIR_SPI_ID/SHANGHAI/TOUCH_POWER/GPIO_SPI/GPIO_REPORT/GPIO_HID=1;
+  omit allGPI flags. Verified0101 rollback and0102 report image preserved.
+- Phone currently rootTWRP. QEMU skipped. User prefers HackiOS approach
+  with renoir hardware checks to avoid wasted exploration/tokens. STOP
+  while CI runs until user reports completion; also STOP awaiting choices
+  when no required independent work remains.
+
 # ACTIVE — 0102 CI PASS; report image verified; temporary boot (2026-10-23)
 
 - CI39813286479 SUCCESS at e0efbf7a3c0a0ec5bdb21941d34f32c7d1f18ead;
