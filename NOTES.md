@@ -1,3 +1,24 @@
+# ACTIVE — 0097 LOCK/UNLOCK VERIFIED; 0098 SPI ID trial local checks
+
+- User confirms0097 lockscreen/time/keys normal; manuallyFASTBOOT ->
+  temporaryTWRP/rootADB. Phone currentlyTWRP, no partition writes.
+- ../logs/ios-gpi-lock-0097-v1.txt134853bytes flush11: NOP/LOCK/UNLOCK
+  eachsuccess1 wait100us, EVRP100010/20/30, exactTXpointers101000/10/20,
+  codeEOB4 guard1 FSR400 faults0 GFSR0. RESET/deallocate allpass.
+- User observes lockscreen date red text turns WHITE over time. Preserve
+  observation; GPU/software rendering/composition/cache remain hypotheses,
+  not proven cause. Do not claim GPU implementation fixes it.
+- 0098 gpilock=2 inserts two bounded10byte SPIreadsA3/9F betweenLOCK/UNLOCK.
+  KnownXO19.2MHz parentguard/div4, mode0 bits8 pack3, TLMM20..23qup10
+  6mA/pullnone, downstreamGSI mode, CONFIG/GO/TX+RX DMA. Validate channel,
+  pointer/type/code/length of both events unordered, CRC/status and5652.
+  Up to7eventslots, no wrap/recycle. No chipwrites/firmwareupload/HID.
+  RESETbefore restoring idleSE/pins; busy retains config untilreboot.
+- Localcompile/repo98patch checks passed before finalDSB addition;
+  rerunfinalchecks thenfullCI. QEMU skipped by user.
+- HackiOS pinned8e611870 source only referenced FTSframing; no different
+  FT3680 firmware/coordinates copied. Original Xiaomi sources primary.
+
 # ACTIVE — 0097 temporaryboot OKAY; user4 still starting, PAUSED
 
 - User says phone FASTBOOT; confirmed and temporaryboot archivedMAIN.
