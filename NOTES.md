@@ -1,3 +1,21 @@
+# ACTIVE — new standalone repo VERIFIED; oldfork CI/backups before deletion
+
+- New https://github.com/daimile2/ios-renoir GitHubID1429589218,
+  fork=false parent=null defaultmain. Exactremote refs match local:
+  main/input58e955d, bringup0841e84, ci/baseline6e1927c,
+  reference/upstream-main11da58b. Independentmirror fsckfullPASS.
+- Oldfork renamed daimile2/ios-renoir-fork-archive-20261022 ID1427071727.
+  Userexplicitlyauthorizeddelete anddelete_repo scopeverified. NOTdeletedyet:
+  waitold0098CI39761164996 attempt2 complete+backup, andhistoricalCIbackup.
+- Newrepo CI39763636478 hardware/source58e955d92d4a67b0c13df7d6635bae8eef4eb541
+  nowin_progress. Same98patches as7d28836; docs/projectpackaging differ.
+- Background historicalCIbackup ../logs/repository-ci-backup-20261022.log,
+  34unexpiredartifacts~1.415GB +completedrunlogs, perZIPtest+SHAmanifest.
+  Neverdeleteoldfork until failuresreviewed/latestCIcopied.
+- Sourcefullbundle ready2153fd1157498fcdb57d63728810f4cf404833e5e7295e6e3117ff9c760fbc00;
+  workspacebundlea1aa347615edd5e178a5d7dc4fd25f83a649a25d95c20d1d1b74a538b88f57cb.
+- Phone remainsrootTWRP; 0098notbooted. QEMU skippedperuser.
+
 # ACTIVE — independent repository migration prepared; old0098 CI now running
 
 - User explicitly requests independentrepo andoldforkdeletion; refreshed

@@ -19,3 +19,9 @@
   object compile, strict patch application/repository checks and full CI,
   then temporary phone boot and persistent-log validation. Do not run
   QEMU automatically based on older notes or original procedure.
+
+## Independent renoir repository (2026-10-22)
+
+- origin is the standalone daimile2/ios-renoir repository (GitHub ID1429589218, fork=false); defaultmain contains renoir code, not the original sweet baseline. Keep upstream attribution and original file licenses.
+- docs/renoir contains the portable handoff documentation. workspace-tools contains host scripts meant to be installed in the workspace tools/ sibling to src/. When editing a host script in workspace tools/, update its workspace-tools copy before publishing; keep the handoff documents in sync.
+- Local backup bundles and old CI archives are in ../artifacts/repository-migration-20261022 and must stay out of git.
