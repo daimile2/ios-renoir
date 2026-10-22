@@ -2,7 +2,7 @@
 
 2026-10-22：真机已运行 XNU、UFS/HFS+ root、launchd、SpringBoard 与锁屏。电源及两个音量键有效，校准后的上海时间正常。用户确认将屏幕拷贝从30Hz降至10Hz后响应改善。**触控、GPU加速、真实电池遥测尚未实现，当前仅启用一个CPU核心。**
 
-工作目录为 `/home/daimile/桌面/ios-renoir`，所有工具、源码和产物都在本目录。操作见[启动与驱动移植交接指南](启动与驱动移植交接指南.md)，开发计划见[驱动开发顺序](驱动开发顺序.md)，触控细节见[GSI触控移植路线](GSI触控移植路线.md)。接续开发先读[src/NOTES.md](src/NOTES.md)顶部和[事实表](renoir移植事实表.md)。
+代码仓库为独立的 [daimile2/ios-renoir](https://github.com/daimile2/ios-renoir)，保留上游贡献历史及署名。工作目录为 `/home/daimile/桌面/ios-renoir`，所有工具、源码和产物都在本目录。操作见[启动与驱动移植交接指南](启动与驱动移植交接指南.md)，开发计划见[驱动开发顺序](驱动开发顺序.md)，触控细节见[GSI触控移植路线](GSI触控移植路线.md)。接续开发先读[src/NOTES.md](src/NOTES.md)顶部和[事实表](renoir移植事实表.md)。
 
 ## 启动已验证镜像
 
@@ -48,7 +48,7 @@ TWRP的ADB可能需要30–100秒；不要格式化Data或刷入recovery。脚�
 | 0095 | context/SID配置读回及TX/RX启动通过；把FSR格式位误当fault，NOP轮询立即退出，尚无有效完成事件 |
 | 0096 | NOP真实DMA完成：100µs，有效event、guard1、faults0，复位与释放通过 |
 | 0097 | NOP/LOCK/UNLOCK均100µs，有效事件、guard1/faults0及复位释放通过 |
-| 0098构建中 | GSI SPI读A3/9F与双通道完成事件、CRC校验；尚未上机 |
+| 0098 | 新独立仓库CI #1成功，GSI SPI读ID镜像已构建，真机结果待验 |
 
 最新已读日志：`logs/ios-gpi-lock-0097-v1.txt`。SMMU有82个空闲SMR，未引用context的寄存器有残留值；不能以全零认定归属。ID0_ATOSNS=1表示不支持ATS翻译测试，不能使用ATS1PR/PAR。0092未提交DMA；0093新增独立开关测试专用映射与NOP，成功与否仍须真机日志。芯片ID、坐标与HID触控尚未打通。
 

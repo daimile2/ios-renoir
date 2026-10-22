@@ -1,3 +1,25 @@
+# ACTIVE — 0098 newrepoCI PASS; MAIN/fallback built; historicalbackup USER-owned
+
+- NewrepoCI39763636478 SUCCESS at58e955d92d4a67b0c13df7d6635bae8eef4eb541,
+  hardwarepatch7d28836. Explicit0098apply verified ../logs/ci-39763636478.txt.
+- Downloadvia localloopbackproxy succeeded, ZIP+kernelSHA verified:
+  eb662882ab89a35a6034244e0a2a9d8e1ff1cb80fea6b6ec5df144a04edbb55e.
+- MAIN ../artifacts/xnu-renoir-0098/phone-gsi-spi-id-v1/shim-boot.img,
+  modegpilock2; fallbackphone-gpi-lock-fallback-v1 mode1. See manifests for
+  exactSHA: MAINba48bcf317142878131231ec5b7adb1a7ed3ce3b67512bf1c2d48f6fc338bcb9;
+  fallbackb772882b12e84eed9d29915f421247c2bbbf3e630e4c392876e043471d9287d7. Both602byteargs, unpackpayload/stockDTBcmpPASS; no0098phoneyet.
+- User requestsclearallGitconfiguredproxies/use localhost127.0.0.1:12334:
+  removedglobalhttp URLproxyexceptions+http.noproxy; nootherconfigured
+  local/systemproxyfound. Git SSH origin unchanged; downloads use envlocalproxy.
+- User TAKES OVER historicalCI downloads. STOPPED onlyourbackupworkers,
+  preserveZIP/partials/manifest. Resumecommandprovided:
+  HTTPS_PROXY=http://127.0.0.1:12334 HTTP_PROXY=http://127.0.0.1:12334 ALL_PROXY=http://127.0.0.1:12334
+  python3 artifacts/repository-migration-20261022/backup-github-ci.py
+- Newindependentrepo verifiedID1429589218; oldforkarchive stillEXISTS pending
+  user'shistoricalbackup completion beforeauthorizeddeletion. Do NOTstart
+  historicaldownloads ourselves, and doNOTdeletewhileuserisdownloading.
+- QEMUskippedbyuser. Nexttemporaryboot0098MAIN, screen/event/CRCvalidation.
+
 # ACTIVE — new standalone repo VERIFIED; oldfork CI/backups before deletion
 
 - New https://github.com/daimile2/ios-renoir GitHubID1429589218,

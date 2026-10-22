@@ -9,7 +9,7 @@
 - 真机XNU、UFS、可写HFS+根文件系统、launchd、SpringBoard和锁屏。
 - 电源键及两个音量键、校准RTC与上海时区；10Hz屏幕拷贝比30Hz响应改善。
 - 触控电源请求、复位、GPI/SMMU专用DMA及NOP/LOCK/UNLOCK完成事件（0097）通过。
-- 0098新增FT3658U GSI SPI芯片ID与CRC读取测试，尚待完整CI与真机验收。
+- 0098新增FT3658U GSI SPI芯片ID与CRC读取测试，完整CI已通过，尚待真机ID与CRC验收。
 
 触控坐标/HID尚未完成，未实现GPU加速、真实电池遥测、Wi-Fi/蓝牙/音频。当前只启用一个CPU核心，仍有明显卡顿。红色字体随时间变白的现象已记录，原因未确认。原sweet设备的触控和SMP结果不能视为renoir已实现。
 
