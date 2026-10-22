@@ -1,0 +1,137 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -21,6 +21,7 @@
+ 
+ extern vm_offset_t ml_io_map(vm_offset_t, vm_size_t);
+ extern void sweet_hid_key(int key, int down);
++extern void sweet_hid_touch(int finger, int down, int x, int y);
+ extern int renoir_touch_power(void);
+ void sweet_keys_init(void);
+ 
+@@ -37,6 +38,7 @@
+ static bool keys_started;
+ static int keys_sleep_chan;
+ static vm_offset_t renoir_report_tlmm;
++static bool renoir_report_hid;
+ 
+ static uint32_t
+ keys_rd(vm_offset_t base, uint32_t off)
+@@ -909,6 +911,53 @@
+ 	renoir_gpi_allocator(regs);
+ }
+ 
++/* Pinned HackiOS focaltech_report pattern: remember contacts and release
++ * missing IDs. Renoir samples reach 8635/19160: native axes are 8 subpixels
++ * per panel pixel, unlike redwood's 10800/24000 report extent.
++ * Validate the complete frame before emitting any HID transitions. */
++static struct { bool down; unsigned x,y; } renoir_contacts[10];
++
++static void
++renoir_gpio_hid_release(void)
++{
++	for(unsigned id=0;id<10;++id) if(renoir_contacts[id].down) {
++		sweet_hid_touch(id,0,renoir_contacts[id].x,renoir_contacts[id].y);
++		renoir_contacts[id].down=false;
++	}
++}
++
++static bool
++renoir_gpio_hid_report(const uint8_t *buf)
++{
++	bool seen[10]={0},down[10]={0};
++	unsigned xs[10]={0},ys[10]={0},active=0,count=buf[2]&15;
++	if(count>10) return false;
++	for(unsigned i=0;i<10;++i) {
++		unsigned off=6*i,id=buf[5+off]>>4;
++		if(id>=10) break;
++		unsigned flag=buf[3+off]>>6;
++		unsigned x=((buf[3+off]&15)<<11)+(buf[4+off]<<3)+((buf[7+off]&0xe0)>>5);
++		unsigned y=((buf[5+off]&15)<<11)+(buf[6+off]<<3)+((buf[7+off]&0x1c)>>2);
++		if(seen[id] || flag==3) return false;
++		seen[id]=true;
++		if(flag==1) continue; /* UP uses the last accepted position. */
++		if(x>=1080*8 || y>=2400*8) return false;
++		down[id]=true; xs[id]=x/8; ys[id]=y/8; ++active;
++	}
++	if(active!=count) return false;
++	/* Release old/missing contacts first, then post down/move events. */
++	for(unsigned id=0;id<10;++id) if(renoir_contacts[id].down && !down[id]) {
++		sweet_hid_touch(id,0,renoir_contacts[id].x,renoir_contacts[id].y);
++		renoir_contacts[id].down=false;
++	}
++	for(unsigned id=0;id<10;++id) if(down[id]) {
++		sweet_hid_touch(id,1,xs[id],ys[id]);
++		renoir_contacts[id].down=true;
++		renoir_contacts[id].x=xs[id]; renoir_contacts[id].y=ys[id];
++	}
++	return true;
++}
++
+ /* Vendor star-r-oss reads 63 touch + 28 gesture - 1 prefix bytes.
+  * Diagnostics only: never inject unvalidated coordinates into HID. */
+ static void
+@@ -916,23 +965,32 @@
+ {
+ 	if(!renoir_report_tlmm) return;
+ 	uint8_t tx[99]={1,0xa0,0,90},rx[99]={0},buf[91]={1};
+-	static unsigned polls,good,bad,printed;
++	static unsigned polls,good,bad,printed,invalid,consecutive_bad;
+ 	static uint8_t previous[62];
+ 	++polls;
+ 	bool transfer=renoir_gpio_spi_xfer(renoir_report_tlmm,tx,rx,sizeof(tx));
+ 	bool crc=renoir_fts_crc(rx+7,90)==(uint16_t)(rx[97]|(rx[98]<<8));
+ 	if(!transfer || (rx[3]&0xa0) || !crc) {
++		if(renoir_report_hid && ++consecutive_bad>=3) renoir_gpio_hid_release();
+ 		if(++bad<=3 || bad%100==0)
+ 			printf("RENOIR GPIO REPORT: rejected poll=%u status=%#x crc=%d bad=%u\n",polls,rx[3],crc,bad);
+ 	} else {
+ 		++good;
+ 		memcpy(buf+1,rx+7,90);
++		if(renoir_report_hid) {
++			if(renoir_gpio_hid_report(buf)) consecutive_bad=0;
++			else {
++				++invalid;
++				if(++consecutive_bad>=3) renoir_gpio_hid_release();
++				if(invalid<=3 || invalid%100==0) printf("RENOIR GPIO HID: invalid frame count=%u total=%u\n",buf[2]&15,invalid);
++			}
++		}
+ 		unsigned count=buf[2]&15;
+ 		bool changed=memcmp(previous,buf+1,sizeof(previous))!=0;
+ 		memcpy(previous,buf+1,sizeof(previous));
+ 		if(changed && (printed<300 || polls%100==0)) {
+ 			++printed;
+-			printf("RENOIR GPIO REPORT: poll=%u count=%u header=%02x/%02x IRQ31=%u CRC=1 NO HID\n",
++			printf("RENOIR GPIO REPORT: poll=%u count=%u header=%02x/%02x IRQ31=%u CRC=1\n",
+ 			    polls,count,buf[1],buf[2],keys_rd(renoir_report_tlmm,31*0x1000+4)&1);
+ 			if(count<=10) for(unsigned i=0;i<10;++i) {
+ 				unsigned off=6*i,id=buf[5+off]>>4;
+@@ -940,12 +998,12 @@
+ 				unsigned x=((buf[3+off]&15)<<11)+(buf[4+off]<<3)+((buf[7+off]&0xe0)>>5);
+ 				unsigned y=((buf[5+off]&15)<<11)+(buf[6+off]<<3)+((buf[7+off]&0x1c)>>2);
+ 				unsigned flag=buf[3+off]>>6;
+-				printf("RENOIR GPIO POINT: id=%u flag=%u x=%u y=%u in1080x2400=%d raw=%02x/%02x/%02x/%02x/%02x/%02x\n",
+-				    id,flag,x,y,x<1080&&y<2400,buf[3+off],buf[4+off],buf[5+off],buf[6+off],buf[7+off],buf[8+off]);
++				printf("RENOIR GPIO POINT: id=%u flag=%u x=%u y=%u in8640x19200=%d raw=%02x/%02x/%02x/%02x/%02x/%02x\n",
++				    id,flag,x,y,x<8640&&y<19200,buf[3+off],buf[4+off],buf[5+off],buf[6+off],buf[7+off],buf[8+off]);
+ 			}
+ 		}
+ 	}
+-	if(polls%100==0) printf("RENOIR GPIO REPORT SUMMARY: polls=%u crc-good=%u rejected=%u; NO HID\n",polls,good,bad);
++	if(polls%100==0) printf("RENOIR GPIO REPORT SUMMARY: polls=%u crc-good=%u rejected=%u hid=%d invalid=%u\n",polls,good,bad,renoir_report_hid,invalid);
+ }
+ 
+ static void
+@@ -981,8 +1039,12 @@
+ 	int reports=0;
+ 	(void)PE_parse_boot_argn("bbreport",&reports,sizeof(reports));
+ 	if(reports==1 && a && b && hi==0x56 && lo==0x52 && persisted) {
++		int hid=0;
++		(void)PE_parse_boot_argn("bbhid",&hid,sizeof(hid));
++		renoir_report_hid=hid==1;
+ 		renoir_report_tlmm=tlmm;
+-		printf("RENOIR GPIO REPORT: enabled 10Hz diagnostic polling; keep GPIO pins; NO HID\n");
++		printf("RENOIR GPIO HID: enabled=%d panel1080x2400 scale8; missing-ID release; 3-bad-frame release\n",renoir_report_hid);
++		printf("RENOIR GPIO REPORT: enabled 10Hz diagnostic polling; keep GPIO pins\n");
+ 		return;
+ 	}
+ 	/* Disconnect output before restoring its saved latch; CS stays high

@@ -1,0 +1,131 @@
+--- a/bsd/dev/sweet_keys.c
++++ b/bsd/dev/sweet_keys.c
+@@ -36,6 +36,7 @@
+ static uint32_t keys_version, keys_last_status;
+ static bool keys_started;
+ static int keys_sleep_chan;
++static vm_offset_t renoir_report_tlmm;
+ 
+ static uint32_t
+ keys_rd(vm_offset_t base, uint32_t off)
+@@ -243,7 +244,8 @@
+ static bool
+ renoir_gpio_spi_xfer(vm_offset_t tlmm,const uint8_t *tx,uint8_t *rx,unsigned len)
+ {
+-	if(!len || len>16) return false;
++	/* Bound report transfers as well as the ten-byte ID transaction. */
++	if(!len || len>128) return false;
+ 	renoir_spi_wr(tlmm,23*0x1000+4,0); /* CS active low */
+ 	delay(2);
+ 	for(unsigned i=0;i<len;++i) {
+@@ -264,6 +266,18 @@
+ 	return true;
+ }
+ 
++static uint16_t
++renoir_fts_crc(const uint8_t *data, unsigned len)
++{
++	uint16_t crc=0xffff;
++	for(unsigned i=0;i<len;++i) {
++		crc^=data[i];
++		for(unsigned bit=0;bit<8;++bit)
++			crc=(crc&1)?(crc>>1)^0x8408:crc>>1;
++	}
++	return crc;
++}
++
+ static bool
+ renoir_fts_reg(vm_offset_t se, uint8_t reg, uint8_t *value, bool gpio)
+ {
+@@ -275,10 +289,7 @@
+ 		if(!transferred) return false;
+ 		if(gpio) printf("RENOIR GPIO SPI RAW: reg=%#x attempt=%u rx=%02x/%02x/%02x/%02x/%02x/%02x/%02x/%02x/%02x/%02x\n",
+ 		    reg,attempt,rx[0],rx[1],rx[2],rx[3],rx[4],rx[5],rx[6],rx[7],rx[8],rx[9]);
+-		uint16_t crc = 0xffff;
+-		crc ^= rx[7];
+-		for (unsigned bit = 0; bit < 8; ++bit)
+-			crc = (crc & 1) ? (crc >> 1) ^ 0x8408 : crc >> 1;
++		uint16_t crc = renoir_fts_crc(rx+7,1);
+ 		if (!(rx[3] & 0xa0) && crc == (uint16_t)(rx[8] | (rx[9] << 8))) {
+ 			*value = rx[7];
+ 			return true;
+@@ -898,6 +909,45 @@
+ 	renoir_gpi_allocator(regs);
+ }
+ 
++/* Vendor star-r-oss reads 63 touch + 28 gesture - 1 prefix bytes.
++ * Diagnostics only: never inject unvalidated coordinates into HID. */
++static void
++renoir_gpio_report_poll(void)
++{
++	if(!renoir_report_tlmm) return;
++	uint8_t tx[99]={1,0xa0,0,90},rx[99]={0},buf[91]={1};
++	static unsigned polls,good,bad,printed;
++	static uint8_t previous[62];
++	++polls;
++	bool transfer=renoir_gpio_spi_xfer(renoir_report_tlmm,tx,rx,sizeof(tx));
++	bool crc=renoir_fts_crc(rx+7,90)==(uint16_t)(rx[97]|(rx[98]<<8));
++	if(!transfer || (rx[3]&0xa0) || !crc) {
++		if(++bad<=3 || bad%100==0)
++			printf("RENOIR GPIO REPORT: rejected poll=%u status=%#x crc=%d bad=%u\n",polls,rx[3],crc,bad);
++	} else {
++		++good;
++		memcpy(buf+1,rx+7,90);
++		unsigned count=buf[2]&15;
++		bool changed=memcmp(previous,buf+1,sizeof(previous))!=0;
++		memcpy(previous,buf+1,sizeof(previous));
++		if(changed && (printed<300 || polls%100==0)) {
++			++printed;
++			printf("RENOIR GPIO REPORT: poll=%u count=%u header=%02x/%02x IRQ31=%u CRC=1 NO HID\n",
++			    polls,count,buf[1],buf[2],keys_rd(renoir_report_tlmm,31*0x1000+4)&1);
++			if(count<=10) for(unsigned i=0;i<10;++i) {
++				unsigned off=6*i,id=buf[5+off]>>4;
++				if(id>=10) break;
++				unsigned x=((buf[3+off]&15)<<11)+(buf[4+off]<<3)+((buf[7+off]&0xe0)>>5);
++				unsigned y=((buf[5+off]&15)<<11)+(buf[6+off]<<3)+((buf[7+off]&0x1c)>>2);
++				unsigned flag=buf[3+off]>>6;
++				printf("RENOIR GPIO POINT: id=%u flag=%u x=%u y=%u in1080x2400=%d raw=%02x/%02x/%02x/%02x/%02x/%02x\n",
++				    id,flag,x,y,x<1080&&y<2400,buf[3+off],buf[4+off],buf[5+off],buf[6+off],buf[7+off],buf[8+off]);
++			}
++		}
++	}
++	if(polls%100==0) printf("RENOIR GPIO REPORT SUMMARY: polls=%u crc-good=%u rejected=%u; NO HID\n",polls,good,bad);
++}
++
+ static void
+ renoir_gpio_spi_id(vm_offset_t tlmm)
+ {
+@@ -927,7 +977,14 @@
+ 		b=renoir_fts_reg(tlmm,0x9f,&lo,true);
+ 	}
+ 	printf("RENOIR GPIO SPI ID: id=%02x%02x valid-crc=%d/%d expected5652=%d; NO touch events\n",hi,lo,a,b,a&&b&&hi==0x56&&lo==0x52);
+-	(void)renoir_spi_stage("GPIO SPI ID result before restore",0);
++	bool persisted=renoir_spi_stage("GPIO SPI ID result before restore",0);
++	int reports=0;
++	(void)PE_parse_boot_argn("bbreport",&reports,sizeof(reports));
++	if(reports==1 && a && b && hi==0x56 && lo==0x52 && persisted) {
++		renoir_report_tlmm=tlmm;
++		printf("RENOIR GPIO REPORT: enabled 10Hz diagnostic polling; keep GPIO pins; NO HID\n");
++		return;
++	}
+ 	/* Disconnect output before restoring its saved latch; CS stays high
+ 	 * until its OE is cleared. All saved configurations had OE clear. */
+ 	renoir_spi_wr(tlmm,23*0x1000+4,2);
+@@ -1082,6 +1139,7 @@
+ {
+ 	int state[3] = {0, 0, 0};
+ 	unsigned errors = 0;
++	unsigned report_tick = 0;
+ 	(void)arg;
+ 	(void)result;
+ 	for (;;) {
+@@ -1105,6 +1163,9 @@
+ 				sweet_hid_key(k, state[k]);
+ 			}
+ 		}
++		/* Separate from each key read; bounded ~2.4ms wire delay per report.
++		 * Real rate is at most 10Hz, including scheduler/MMIO overhead. */
++		if(++report_tick==5) { report_tick=0; renoir_gpio_report_poll(); }
+ 		keys_wait();
+ 	}
+ }

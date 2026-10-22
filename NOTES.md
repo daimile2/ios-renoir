@@ -1,3 +1,199 @@
+# ACTIVE — 0102 report VERIFIED; 0103 HID local checks PASS (2026-10-23)
+
+- User confirmed0102 GUI normal, completed touch test, returnedFASTBOOT.
+  TemporaryTWRP/rootADB; fresh ../logs/ios-gpio-report-0102-v1.txt,
+  total161227 flush25. 1100polls CRC-good1100 rejected0; down/contact/up,
+  IDs0/1 seen. Raw x274..8635 y493..19160; consistent with 8 subpixels per
+  renoir1080x2400 pixel, NOT redwood10800x24000. Initial CRC-valid allFF
+  count15 is invalid touch data. No0102 HID injected.
+- 0103 follows pinned HackiOS focaltech_report contact tracking + missing-ID
+  release; validates entire frame/count/duplicateID/event/range first;
+  releases on 3 consecutive invalid/transport frames; uses existing
+  sweet_hid_touch(pixel coords), which handles canvas offsets/edge flags.
+  Separate bbhid=1 opt-in requires bbreport=1; GPIO10Hz unchanged.
+- Local sweet_keys arm64 compile PASS; strict103patch application PASS;
+  repository/shell/diff checks PASS. Extracted actual C parser replay:
+  130accepted frames, 1rejected initial allFF, 194HID calls; explicit missing
+  ID, invalid event and coordinate-range checks PASS. Real HID not tested.
+- Next fullCI at renoir/input, then build new phone-gpio-hid-v1 with
+  RENOIR_SPI_ID/SHANGHAI/TOUCH_POWER/GPIO_SPI/GPIO_REPORT/GPIO_HID=1;
+  omit allGPI flags. Verified0101 rollback and0102 report image preserved.
+- Phone currently rootTWRP. QEMU skipped. User prefers HackiOS approach
+  with renoir hardware checks to avoid wasted exploration/tokens. STOP
+  while CI runs until user reports completion; also STOP awaiting choices
+  when no required independent work remains.
+
+# ACTIVE — 0102 CI PASS; report image verified; temporary boot (2026-10-23)
+
+- CI39813286479 SUCCESS at e0efbf7a3c0a0ec5bdb21941d34f32c7d1f18ead;
+  log ../logs/ci-39813286479.txt confirms explicit0102 patch application.
+  Downloaded kernel SHA256SUMS PASS. Image unpack/payload/stockDTB PASS.
+- MAIN ../artifacts/xnu-renoir-0102/phone-gpio-report-v1/shim-boot.img;
+  exact SHA/args in manifest. GPIO ID+report enabled, all GPI flags absent.
+  NO HID. Preserve verified0101 rollback. QEMU skipped by user.
+- User reconnected phone; root TWRP adb verified. Proceed temporary boot
+  only, then ask user GUI and touch sampling. Actual report/CRC unknown.
+- Stop when awaiting user response; never poll workflow while waiting.
+
+# ACTIVE — 0102 report diagnostics local checks PASS; preparing CI (2026-10-23)
+
+- Resumed from uncommitted 0102 patch. Local sweet_keys arm64 object compile
+  PASS; all 102 patches strict application PASS; repository/shell/diff checks
+  PASS. Host build script and workspace-tools copy match. QEMU skipped.
+- bbreport=1 requires bbspi=1 and verified ID5652/CRC plus persisted stage;
+  reads vendor 90-byte payload (99-byte wire transfer), checks CRC/status,
+  logs native 15-bit coordinates at at most 10Hz. NO HID injection.
+- Prior locally named ios-gpio-spi-id-0102-v1 log contains ID proof only;
+  it does not establish report polling success. Current 0102 needs new CI
+  and new distinctly named report image/log before any acceptance claim.
+- User says phone is in TWRP; adb devices currently empty. Leave phone
+  untouched during build. User requests STOP while workflow runs; resume
+  when they report completion. Also stop whenever awaiting their choice
+  with no required independent work; no automated workflow polling.
+- Preserve verified 0101 rollback. Never flash partitions for this test.
+
+# ACTIVE — 0101 GPIO chip ID VERIFIED; 0102 report-only probe in development
+
+- Fresh ../logs/ios-gpio-spi-id-0101-v1.txt: total76263 flush12;
+  A3=56 CRC3438, 9F=52 CRC107e (wire little endian), id5652 CRC1/1.
+  GPIO pinmux/latches restored; user confirmed lockscreen/time/keys normal.
+  Phone now temporary rootTWRP for log retrieval. No HID/touch events yet.
+- Next0102: opt-in bbreport=1, vendor-length90-byte payload, CRC/status
+  checking, native15bit coordinate parser and bounded logging. Keep GPIO
+  pins only after expected ID proof; key-thread10Hz sampling. No HID yet.
+- Preserve0101 archived image as verified rollback; QEMU skipped by user.
+  Historical CI downloads remain user-owned; old fork deletion pending.
+
+# ACTIVE — 0101 GPIOonly CI PASS; images verified; temporaryboot underway
+
+- CI39773009809 SUCCESS at ee48e1e51fc3213f67ea9fe5cc4aea8ffa84e79c,
+  explicit0101apply ../logs/ci-39773009809.txt. KernelSHA
+  3545025a05ba0bc79e0f2f5d16b4ba2aa0e667cc1b5fcaa9fc18006f4967f9f5.
+- MAIN ../artifacts/xnu-renoir-0101/phone-gpio-spi-id-v1/shim-boot.img
+  de00ea48ecf872dc96312ca64b4bcdac36804fd7d77078bd5c3452dafecf8b8c,
+  args551inclNUL, bbspi1, noGPIprobe/ALLOC/DMA/lock flags; manifestasserted.
+- Fallback ../artifacts/xnu-renoir-0101/phone-dynamic-lock-fallback-v1/shim-boot.img
+  f408b80daf337ce33d70e8e768c03d34924949b99bf889fae7a76866af1f5ba6,
+  args602, GPIOdisabled/gpilock1. Bothunpackpayload/stockDTBcmpPASS.
+  shim/out currentlyfallback; bootarchivedMAIN only.
+- PhoneconfirmedrootTWRP, adbbootloader+MAIN bootstarted;
+  ../logs/fastboot-gpio-spi-id-0101-v1.log. NoGUI/ID/CRC resultyet.
+- QEMUskippedbyuser. Askfeedbackafterstartup, noresponse30s=>pause.
+  HistoricalbackupUSER-owned; oldforkdeleteawaitstheircompletion.
+
+# ACTIVE — 0101 CI39773009809 running; phone rootTWRP
+
+- Sourceee48e1e51fc3213f67ea9fe5cc4aea8ffa84e79c. LocalkeyscompilePASS,
+  strictall101patchapplicationPASS, repo/shell/diffPASS. QEMUskipped.
+- 0101 MAIN mustGPIOONLY: RENOIR_SPI_ID=1 RENOIR_SHANGHAI=1
+  RENOIR_TOUCH_POWER=1 RENOIR_GPIO_SPI=1; omit/set0 ALLRENOIR_GPI_*.
+  Mainbbspi1, noGPIprobe/ALLOC/DMA/SMMUexperiment. Buildsamekernelmode1
+  fallbackwithGPIO=0 plusoldGPIflagsforstandaloneNOP/LOCK ifneeded.
+- NextwaitCI, downloadnewkernel/logs viaHTTPproxy127.0.0.1:12334,
+  verifySHA/unpack, rootTWRP adbbootloader andtemporaryarchivedGPIOmain.
+  NoIDorGPIOtouchsuccessyet; do notinferfromcompiler/GUI alone.
+- RebootingGSIimages0098..0100 remainBADformainSPItest; static0assignment
+  confirmedfixedbutrebootnotresolved. See0100freshlogflush34.
+- HistoricalCIbackupUSER-owned; oldforkdeletependingcompletion, nointerference.
+  User30sresponsepause rule persists wheneverasked.
+
+# ACTIVE — 0100 static0 allocation/LOCK VERIFIED but reboot persists; 0101 GPIO ID
+
+- User0100reboot->FASTBOOT->temporaryTWRP/rootADB. PhoneNOWrootTWRP.
+  ../logs/ios-static-spi-0100-reboot-v1.txt12384bytesflush34 FRESH.
+  Route group0mask1 confirmed idle cfg0/scratch0; EV/TX/RX ALLOCfresh1,
+  STARTfresh/state2; NOP/LOCK100us valid. FullSE/pinsetup readbackPASS.
+  Lastmarker BEFOREfirstA3pairedDB. Staticroutecorrection valid perDT,
+  but NOTsufficienttofixreboot. NoSPIID/FAR/faultPC yet.
+- 0101 implements bbspi=1 GPIOmode0 ID-only transport inspired by pinned
+  HackiOS8e611870 GPIO pattern, usingrenoir20MISO/21MOSI/22CLK/23CS.
+  Strictidleinput/qup10/OE guard; CS high/CLKlowbeforeOE, 1usphase delays,
+  A3/9F eachmax3reads/CRC/status, raw10byteRXlogs, restorecfg/latches.
+  Nochipwrites/firmwareupload/HID. Separatebootoption skipsGPI/SMMUprobe/
+  commandsentirely; buildscript rejectscombinedGPIO+GPI options.
+- Also addspost-pairedDB, postDMAresult, preRESET checkpoints forGSI
+  diagnostics, sofutureGSItestdoesnotloseerrorsduringcleanup. Descriptor
+  contents/pair-doorbelltimingunchanged. MainGPIOimage doesnotrunGSI.
+- LocalkeyscompilePASS; nextall101patchstrict/repo/shell/fullCI.
+  QEMUskippedperuser. Hostscriptmirroredtoworkspace-tools.
+- Historicalbackup USER-owned; oldforkNOTdeletedpendingcompletion.
+
+# ACTIVE — 0100 CI PASS; staticSPI MAIN/fallback verified; temporaryboot underway
+
+- CI39769781549 SUCCESS atbbc7c8ab878c9d84f1e574a61c63938da134bf49;
+  explicit0100apply ../logs/ci-39769781549.txt. KernelSHA
+  292bad619e97c8e764a6c305a60d61aaa7b28e593994f12450c94b40ee9ba578.
+- MAIN ../artifacts/xnu-renoir-0100/phone-static-spi-v1/shim-boot.img
+  6e760b3ad3cf70ed8412a10ee817d0388926acb04dff9ec8538080516e92c3fb.
+- Fallback ../artifacts/xnu-renoir-0100/phone-dynamic-lock-fallback-v1/shim-boot.img
+  11962bb06fc9dd6e424b948128adfffde839cc68da723ee94e8f79c900347b4a.
+  Bothargs602 inclNUL, unpackpayload/stockDTBcmpPASS. shim/out=fallback.
+- PhoneconfirmedrootTWRP; adb rebootbootloader then archivedMAIN boot
+  started. ../logs/fastboot-static-spi-0100-v1.log. Actualstatic0allocation/
+  SPIevents/ID/CRC/GUI unknownyet. NoIDsuccessclaim, nopartitionflash.
+- QEMUskipped, user30sreply-or-pause. HistoricalbackupUSER-owned,
+  oldforkNOTdeletedawaitingcompletebackups.
+
+# ACTIVE — 0100 CI39769781549 running; phone rootTWRP
+
+- Hardware/sourcebbc7c8ab878c9d84f1e574a61c63938da134bf49.
+  LocalkeyscompilePASS, all100patchstrictapplicationPASS, repo/diffPASS.
+  CI39769781549 in_progress. QEMUskippedbyuser.
+- Static0selectiononlyforSPIgpilock2 pluspersistedmarker beforefirstgroup0
+  mask/ALLOCwrite; sameidle/freshcommandguards, mode1dynamicpath unchanged.
+  Do notclaimresetfixeduntilactualphoneevent/CRC.
+- Phone rootTWRP from0099logread, nofurtheruseractionneededuntilimagesready.
+  NextCI/downloadviaHTTPproxy127.0.0.1:12334/buildmain+mode1fallback,
+  adbbootloader/temporaryMAINboot; inspectuserfeedback thenrootTWRPlogs.
+- Oldforkstillnotdeleted, historicalbackupUSER-owned. User30sreply/pause.
+
+# ACTIVE — 0099 freshcheckpoints VERIFIED; static-GPI bug found; 0100 fix
+
+- Userreports0099reboots -> FASTBOOT -> temporaryTWRP/rootADB.
+  ../logs/ios-spi-checkpoint-0099-reboot-v1.txt12208bytes flush33 FRESH.
+  Synchronouslogcheckpoint WORKS. NOP/LOCK100us valid, SMMUfaults0.
+  ALLnewSEsave-reads/TLMM20..23writes/SEsetupwrites survive; setup
+  readback1 mode1 eventsf. Lastpersistedmarker BEFORE SPIA3 pairedDB slot2.
+  NoactualID/eventafterSPI. FaultPC unknown, reset nearfirstSPItransaction.
+- CONFIRMEDconfigurationbug in our implementation: DT SPI dmas fifthcell2
+  is STATIC_GPII_BMSK=2 =>true (pinnedgpi.c gpi_of_dma_xlate lines2891..96),
+  gpi_find_avail_gpii selects static-mask1=>group0. We incorrectly used
+  dynamic1..6 for touch. NOP/LOCKgroup1 success didnotproveSEroutevalid.
+  Thisisa source-levelmismatch, NOTyetprovenresetrootcause.
+- 0100 ONLYchangesgroupselection for gpilock2 toDTstatic0, sameidle/
+  ownership/freshcommandguards; nofallbacktodynamicif0busy. Mode1keeps
+  validateddynamic1..6; noaccess7..11. Allprotocol/pairDBtiming unchanged.
+- PhonecurrentlyrootTWRP; stop0099MAIN/0098MAIN. Wait0100checks/fullCI.
+  0097knownGUIrollbackavailable. QEMUskippedperuser.
+- HistoricalCIbackup user-owned; oldforkNOTdeleted awaitingtheircompletion.
+
+# ACTIVE — 0099 CI PASS; images verified; temporaryboot in progress
+
+- CI39767320682 SUCCESS hardware/sourcef01c7286e861feae9fc7e387028f764b138a549c.
+  Explicit0099apply verified ../logs/ci-39767320682.txt. KernelSHA
+  b285f41e7f833e4335a3db76e9a9b198da5f212f27f398e971205299a3d97099.
+- MAIN ../artifacts/xnu-renoir-0099/phone-spi-checkpoint-v1/shim-boot.img
+  80bf0e3a12b9632bf1f216356d3b452f74152f71c0e0deff8f738c102a147526.
+- Samekernel noSPI mode1 ../artifacts/xnu-renoir-0099/phone-lock-fallback-v1/shim-boot.img
+  ca345426208c33da0343dfb9843611e91408b4d16343e6862e14180f4c7c4042.
+  Bothargs602 inclNUL, unpackpayload/stockDTBcmpPASS. shim/out holdsfallback.
+- UsermanualFASTBOOTconfirmed, temporaryboot archivedMAIN nowstarted;
+  ../logs/fastboot-spi-checkpoint-0099-v1.log. NoGUI/resultknownyet.
+- Historicalbackup stillUSER-owned, oldfork notdeleted; donotinterfere.
+  QEMUskippedbyuser; reply-or-pause30s whenasked persists.
+
+# ACTIVE — 0099 CI39767320682 queued; phone0097GUI confirmed, keepitthere
+
+- Finalsourcef01c7286e861feae9fc7e387028f764b138a549c onrenoir/input.
+  Local2objectsPASS +finalkeysPASS, all99patchesstrictPASS, repo/diffPASS.
+  CI39767320682 submitted. QEMUskippedbyuser.
+- NextwaitCI/downloadkernel+logs usinglocalproxy127.0.0.1:12334,
+  build0099 gpilock2main andgpilock1fallback, then askuserFASTBOOT.
+- Currentphone0097lockscreen verifiedbyuser, noADB/noFASTBOOT. Do not
+  rebootoraskforFASTBOOTuntil0099imagesready. User30sreply-or-pause.
+- Mainbranch e7ffadf documents0098BAD/0097rollback; diagnostics patchonly
+  ininput untilvalidated. Oldforkdeletion pendingUSER-ownedhistorybackup.
+
 # ACTIVE — 0099 final local compile/99patch/repo PASS; preparefullCI
 
 - sweet_ufs+sweet_keys compilePASS; finalentry/GPIcheckpoint keyscompilePASS.

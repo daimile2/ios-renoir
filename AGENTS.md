@@ -25,3 +25,9 @@
 - origin is the standalone daimile2/ios-renoir repository (GitHub ID1429589218, fork=false); defaultmain contains renoir code, not the original sweet baseline. Keep upstream attribution and original file licenses.
 - docs/renoir contains the portable handoff documentation. workspace-tools contains host scripts meant to be installed in the workspace tools/ sibling to src/. When editing a host script in workspace tools/, update its workspace-tools copy before publishing; keep the handoff documents in sync.
 - Local backup bundles and old CI archives are in ../artifacts/repository-migration-20261022 and must stay out of git.
+
+- User preference (2026-10-23): prioritize the pinned local HackiOS driver
+  approach for future ports, verify renoir-specific hardware differences,
+  and avoid prolonged independent exploration when a reference path exists.
+  Pause while workflows run until user reports completion; pause when
+  awaiting user feedback with no mandatory background work.

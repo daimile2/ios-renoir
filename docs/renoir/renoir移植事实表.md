@@ -83,3 +83,9 @@
 
 - 0094 VA64 context实测SCTLR=c00027（bit12写1读0）、TCR=802020、TCR2=38071；0095调整hint读回判定后发布SID4d6 slot7/CB7/ASID255，IOVA100000+10000专用pool，配置读回通过。尚无DMA完成事件。
 - FSR400是Format[10:9]=2/AArch64，不是fault；固定Linux的fault mask=c00001fe。0095因任意非零谓词错误提前退出，FAR在faultmask0时无故障含义；0096修复，待真机事件验收。
+
+## 0100纠正静态GPI选择（2026-10-22）
+
+0099真机同步日志有效（`logs/ios-spi-checkpoint-0099-reboot-v1.txt`，12208字节，flush33）：NOP/LOCK、全部SE保存读取、GPIO20–23配置及SE模式初始化均走过，最后标记在A3成对门铃前；重启范围缩小到首次SPI事务，仍无有效芯片ID。
+
+此前对DT第五个DMA cell的解读遗漏：`(channel, SE2, SPI1, 0x40, 2)`的最后2含STATIC_GPII_BMSK位1。固定小米gpi.c的gpi_of_dma_xlate与gpi_find_avail_gpii将其映射到`qcom,static-gpii-mask=1`，即GPI0，而非动态mask0x7e。DT trusted-touch-io-bases中的0x910000也对应GPI0上下文。0100仅将SPI模式gpilock2选择限制为静态组0，空闲/无协议关联/无pending IRQ检查及新ALLOC完成验证保持；组0忙则停止，不尝试其他组。mode1独立NOP/LOCK测试仍用动态1–6。不要访问7–11。历史“静态0仅观察”的限制被这个已核对的SPI静态分配事实更新。是否解决重启仍需真机验证，不提前宣称。
